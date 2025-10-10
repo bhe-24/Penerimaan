@@ -6,7 +6,9 @@
     <title>Portal Pendaftaran - Cendekia Aksara</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <!-- Script Firebase dipindahkan ke dalam tag script utama dengan type="module" -->
+    <!-- jsPDF untuk fungsionalitas unduh PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
         body { font-family: 'Poppins', sans-serif; background-color: #f0f4f8; }
@@ -53,7 +55,6 @@
             <!-- Login & Register View -->
             <div id="auth-view" class="view">
                  <div class="w-full max-w-md p-8 bg-white rounded-xl shadow-lg mx-auto mt-10">
-                    <!-- [REVISI] Kontainer Pendaftaran Ditutup -->
                     <div id="registration-closed-container" class="hidden text-center mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                         <i class="fas fa-door-closed text-4xl text-yellow-500 mb-3"></i>
                         <h2 class="text-xl font-bold text-yellow-800">Pendaftaran Telah Ditutup</h2>
@@ -104,11 +105,16 @@
 
             <!-- Admin Dashboard View -->
             <div id="admin-view" class="view">
-                <div class="flex justify-between items-center mb-6">
+                <div class="flex flex-wrap justify-between items-start mb-6 gap-4">
                     <h2 class="text-3xl font-bold">Dasbor Siswa</h2>
-                    <button id="open-console-btn" class="bg-gray-800 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-900 transition duration-300 flex items-center gap-2">
-                        <i class="fas fa-cogs"></i> Buka Konsol Pendaftaran
-                    </button>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="open-archive-btn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition duration-300 flex items-center gap-2 text-sm">
+                            <i class="fas fa-archive"></i> Buka Arsip Siswa
+                        </button>
+                        <button id="open-console-btn" class="bg-gray-800 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-900 transition duration-300 flex items-center gap-2 text-sm">
+                            <i class="fas fa-cogs"></i> Konsol Pendaftaran
+                        </button>
+                    </div>
                 </div>
                 <div id="admin-dashboard-cards" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8"></div>
                 <div id="admin-table-container" class="bg-white p-6 rounded-xl shadow-lg"></div>
@@ -147,6 +153,21 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Admin Archive View -->
+            <div id="admin-archive-view" class="view">
+                <div class="max-w-6xl mx-auto">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold">Arsip Siswa Lulus</h2>
+                        <button id="back-to-dashboard-from-archive-btn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-semibold hover:bg-gray-300 transition duration-300 flex items-center gap-2">
+                            <i class="fas fa-arrow-left"></i> Kembali ke Dasbor
+                        </button>
+                    </div>
+                    <div id="archive-table-container" class="bg-white p-6 rounded-xl shadow-lg">
+                        <!-- Tabel arsip akan dirender di sini oleh JavaScript -->
+                    </div>
+                </div>
+            </div>
             
             <!-- Universal Loading & Error Views -->
             <div id="loading-view" class="view text-center py-20"><div class="mx-auto border-4 border-gray-200 border-t-4 border-t-[#005a9c] rounded-full w-12 h-12 animate-spin"></div><p class="mt-4 text-gray-600">Memuat data...</p></div>
@@ -177,7 +198,6 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // --- STATE & VARIABEL GLOBAL ---
     let currentUserData = null;
     let unsubscribeUser = null;
     let unsubscribeApplicants = null;
@@ -187,7 +207,6 @@
     const STAGES = ["Pendaftaran Awal", "Seleksi", "Daftar Ulang", "Dapat Nomor ID", "Kartu Rencana Studi", "Seleksi Kelas", "Pekan Orientasi"];
     const STAGE_ICONS = ["fa-user-plus", "fa-clipboard-check", "fa-id-card-alt", "fa-hashtag", "fa-book-reader", "fa-chalkboard-teacher", "fa-rocket"];
 
-    // --- FUNGSI UTILITAS ---
     const updateView = (viewId) => {
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active-view'));
         document.getElementById(viewId)?.classList.add('active-view');
@@ -212,7 +231,6 @@
         }
     };
     
-    // --- EVENT LISTENERS UI UTAMA ---
     document.getElementById('show-register').addEventListener('click', async (e) => {
         e.preventDefault();
         const deadline = registrationSettings.deadline?.toDate();
@@ -236,15 +254,18 @@
         signOut(auth);
         showNotification("Anda telah berhasil logout.", "info");
     });
+    // [FIX] Memanggil updateAdminConsole saat tombol diklik
     document.getElementById('open-console-btn').addEventListener('click', () => {
         updateView('admin-console-view');
-        renderAdminConsole(); // Render konsol saat dibuka
+        updateAdminConsole(); 
     });
-    document.getElementById('back-to-dashboard-btn').addEventListener('click', () => {
-        updateView('admin-view');
+    document.getElementById('back-to-dashboard-btn').addEventListener('click', () => updateView('admin-view'));
+    document.getElementById('open-archive-btn').addEventListener('click', () => {
+        updateView('admin-archive-view');
+        renderArchiveView();
     });
+    document.getElementById('back-to-dashboard-from-archive-btn').addEventListener('click', () => updateView('admin-view'));
 
-    // --- LOGIKA AUTENTIKASI ---
     document.getElementById('login-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const form = e.target;
@@ -278,7 +299,7 @@
                 const userRole = email.toLowerCase().endsWith('@ac.id') ? 'admin' : 'siswa';
                 const initialStage = userRole === 'admin' ? null : STAGES[0];
                 
-                const newUser = { name, email, motivation, role: userRole, currentStage: initialStage, createdAt: serverTimestamp(), hasReRegistered: false, isRejected: false, rejectionReason: null, krsLink: null, classLink: null, orientationTasks: [], selectionTasks: [] };
+                const newUser = { name, email, motivation, role: userRole, currentStage: initialStage, createdAt: serverTimestamp(), hasReRegistered: false, isRejected: false, rejectionReason: null, krsLink: null, classLink: null, orientationTasks: [], orientationAnswers: {} };
                 const userDocRef = doc(db, 'users', cred.user.uid);
                 return setDoc(userDocRef, newUser);
             })
@@ -297,7 +318,6 @@
             .finally(() => showLoadingButton(form, false));
     });
 
-    // --- FUNGSI UNTUK MENGELOLA TAMPILAN PENDAFTARAN ---
     async function updateRegistrationAvailability() {
         const deadline = registrationSettings.deadline?.toDate();
         const isPastDeadline = deadline && new Date() > deadline;
@@ -324,7 +344,6 @@
         }
     }
 
-    // --- LISTENER PERUBAHAN STATUS LOGIN ---
     async function setupUserSession(user) {
         const userRef = doc(db, 'users', user.uid);
         const docSnap = await getDoc(userRef);
@@ -337,6 +356,7 @@
             if (data.role !== expectedRole) updates.role = expectedRole;
             if (expectedRole === 'siswa' && !data.currentStage) updates.currentStage = STAGES[0];
             if (!data.createdAt) updates.createdAt = serverTimestamp();
+            if(!data.orientationAnswers) updates.orientationAnswers = {};
             
             if (Object.keys(updates).length > 0) {
                 await setDoc(userRef, updates, { merge: true });
@@ -345,21 +365,19 @@
             return { uid: user.uid, ...data };
         } else {
             const expectedRole = user.email.toLowerCase().endsWith('@ac.id') ? 'admin' : 'siswa';
-            const initialStage = expectedRole === 'siswa' ? STAGES[0] : null;
-            const newUserProfile = { email: user.email, name: user.displayName || "Pengguna Baru", role: expectedRole, currentStage: initialStage, createdAt: serverTimestamp(), };
+            const initialStage = expectedRole === 'siswa' ? null : STAGES[0];
+            const newUserProfile = { email: user.email, name: user.displayName || "Pengguna Baru", role: expectedRole, currentStage: initialStage, createdAt: serverTimestamp(), orientationAnswers: {} };
             await setDoc(userRef, newUserProfile);
             return { uid: user.uid, ...newUserProfile };
         }
     }
     
-    // [REVISI] Listener global untuk settings pendaftaran
     if (unsubscribeSettings) unsubscribeSettings();
     const settingsDocRef = doc(db, 'config', 'settings');
     unsubscribeSettings = onSnapshot(settingsDocRef, async (docSnap) => {
         if (docSnap.exists()) {
             registrationSettings = docSnap.data();
         } else {
-            // Inisialisasi dokumen jika belum ada
             await setDoc(settingsDocRef, { isOpen: false, maxApplicants: 50, deadline: null });
             registrationSettings = { isOpen: false, maxApplicants: 50, deadline: null };
         }
@@ -368,12 +386,8 @@
             updateRegistrationAvailability();
         }
 
-        // [FIX] Jika konsol admin sedang terbuka, render ulang konsolnya secara real-time
         if (document.getElementById('admin-console-view').classList.contains('active-view')) {
-            const q = query(collection(db, "users"), where("role", "==", "siswa"), where("isRejected", "==", false));
-            const querySnapshot = await getDocs(q);
-            const applicantCount = querySnapshot.size;
-            updateAdminConsole(applicantCount);
+            updateAdminConsole();
         }
     });
 
@@ -415,7 +429,6 @@
         }
     });
 
-    // --- FUNGSI RENDER VIEW SISWA ---
     function renderStudentView() {
         if (!currentUserData) return;
         renderStudentTimeline();
@@ -427,34 +440,14 @@
         const container = document.getElementById('student-timeline-container');
         if (!container) return;
         const currentStageIndex = STAGES.indexOf(currentUserData.currentStage);
-
         const timelineItemsHTML = STAGES.map((stage, index) => {
             let statusClass = 'step-pending';
-            if (index < currentStageIndex) {
-                statusClass = 'step-completed';
-            }
-            if (index === currentStageIndex) {
-                statusClass = 'step-active';
-            }
-            if (currentUserData.isRejected && index > 0) {
-                statusClass = 'step-pending';
-            }
-            return `
-                <li class="mb-8 ml-6">
-                    <span class="absolute flex items-center justify-center w-8 h-8 ${statusClass} rounded-full -left-4 ring-8 ring-white">
-                        <i class="fas ${STAGE_ICONS[index]} text-sm"></i>
-                    </span>
-                    <h4 class="font-semibold">${stage}</h4>
-                </li>`;
+            if (index < currentStageIndex) statusClass = 'step-completed';
+            if (index === currentStageIndex) statusClass = 'step-active';
+            if (currentUserData.isRejected && index > 0) statusClass = 'step-pending';
+            return `<li class="mb-8 ml-6"><span class="absolute flex items-center justify-center w-8 h-8 ${statusClass} rounded-full -left-4 ring-8 ring-white"><i class="fas ${STAGE_ICONS[index]} text-sm"></i></span><h4 class="font-semibold">${stage}</h4></li>`;
         }).join('');
-
-        container.innerHTML = `
-            <div class="bg-white p-6 rounded-xl shadow-lg">
-                <h3 class="font-bold text-lg mb-4">Perjalanan Anda</h3>
-                <ol class="relative border-l border-gray-200">
-                    ${timelineItemsHTML}
-                </ol>
-            </div>`;
+        container.innerHTML = `<div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="font-bold text-lg mb-4">Perjalanan Anda</h3><ol class="relative border-l border-gray-200">${timelineItemsHTML}</ol></div>`;
     }
 
     function renderStudentContentByStage() {
@@ -464,61 +457,73 @@
         let contentHTML = '';
 
         if (currentUserData.isRejected) {
-                title = `<div class="text-center"><i class="fas fa-exclamation-circle text-5xl text-red-500 mb-3"></i><h2 class="text-2xl font-bold mb-2 text-red-600">Mohon Maaf, Anda Belum Lolos</h2></div>`;
-                contentHTML = `<p class="text-center text-gray-600">Setelah melalui proses seleksi, kami sampaikan bahwa Anda belum dapat melanjutkan.</p><p class="mt-4 font-semibold text-center">Alasan:</p><p class="p-3 bg-red-50 border border-red-200 rounded-md mt-2 text-center text-red-800">${currentUserData.rejectionReason || 'Tidak ada alasan spesifik.'}</p>`;
-                const deadline = registrationSettings.deadline?.toDate();
-                const isPastDeadline = deadline && new Date() > deadline;
-                if (!registrationSettings.isOpen || isPastDeadline) {
-                    contentHTML += `<button id="recovery-btn" class="mt-6 mx-auto block bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition duration-300">Ajukan Pendaftaran Ulang untuk Periode Berikutnya</button>`;
-                }
-        } else if (stage === STAGES[0]) {
-            contentHTML = `<p>Terima kasih telah mendaftar di Cendekia Aksara. Data Anda sedang kami proses. Mohon tunggu informasi selanjutnya untuk tahap seleksi.</p>`;
+            title = `<div class="text-center"><i class="fas fa-exclamation-circle text-5xl text-red-500 mb-3"></i><h2 class="text-2xl font-bold mb-2 text-red-600">Mohon Maaf, Anda Belum Lolos</h2></div>`;
+            contentHTML = `<p class="text-center text-gray-600">Setelah melalui proses seleksi, kami sampaikan bahwa Anda belum dapat melanjutkan.</p><p class="mt-4 font-semibold text-center">Alasan:</p><p class="p-3 bg-red-50 border border-red-200 rounded-md mt-2 text-center text-red-800">${currentUserData.rejectionReason || 'Tidak ada alasan spesifik.'}</p>`;
+            const deadline = registrationSettings.deadline?.toDate();
+            const isPastDeadline = deadline && new Date() > deadline;
+            if (!registrationSettings.isOpen || isPastDeadline) {
+                contentHTML += `<button id="recovery-btn" class="mt-6 mx-auto block bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition duration-300">Ajukan Pendaftaran Ulang untuk Periode Berikutnya</button>`;
+            }
         } else if (stage === STAGES[1]) {
             if (currentUserData.selectionTasks && currentUserData.selectionTasks.length > 0) {
-                contentHTML = `<p class="mb-4">Untuk melanjutkan, silakan kerjakan tugas seleksi di bawah ini.</p>${currentUserData.selectionTasks.map((task, index) => `<div class="mb-4 p-4 border rounded-lg bg-gray-50"><p class="font-semibold text-gray-800">${task.question}</p>${task.answer ? `<div class="mt-3 p-3 bg-green-100 border border-green-200 rounded-md"><p class="text-sm font-semibold text-green-800">Jawaban Anda (Terkirim):</p><p class="mt-1 text-green-700 italic">"${task.answer}"</p></div>` : `<form class="submit-task-form mt-2" data-task-index="${index}"><textarea class="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" rows="3" required placeholder="Tulis jawaban Anda di sini..."></textarea><button type="submit" class="mt-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Kirim Jawaban</button></form>`}</div>`).join('')}`;
+                contentHTML = `<p class="mb-4">Untuk melanjutkan, silakan kerjakan tugas seleksi di bawah ini.</p>${currentUserData.selectionTasks.map((task, index) => `<div class="mb-4 p-4 border rounded-lg bg-gray-50"><p class="font-semibold text-gray-800">${task.question}</p>${task.answer ? `<div class="mt-3 p-3 bg-green-100 border border-green-200 rounded-md"><p class="text-sm font-semibold text-green-800">Jawaban Anda (Terkirim):</p><p class="mt-1 text-green-700 italic">"${task.answer}"</p></div>` : `<form class="submit-task-form mt-2" data-task-index="${index}"><textarea class="w-full p-2 border rounded-md" rows="3" required placeholder="Tulis jawaban Anda..."></textarea><button type="submit" class="mt-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Kirim</button></form>`}</div>`).join('')}`;
             } else {
                  contentHTML = `<p>Selamat! Anda lolos seleksi administrasi. Mohon tunggu admin memberikan tugas seleksi.</p>`;
             }
         } else if (stage === STAGES[2]) {
             contentHTML = currentUserData.hasReRegistered 
                 ? `<div class="text-center p-4 bg-green-100 rounded-lg"><i class="fas fa-check-circle text-green-500 mr-2"></i><span class="font-semibold text-green-800">Anda sudah melakukan Daftar Ulang.</span><p class="text-sm text-green-700">Mohon tunggu admin memproses data Anda.</p></div>`
-                : `<p>Selamat! Anda lolos tahap seleksi. Silakan lakukan daftar ulang.</p><button id="reregister-btn" class="mt-4 bg-green-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-700 transition duration-300 flex items-center gap-2"><i class="fas fa-check"></i>Konfirmasi Daftar Ulang</button>`;
-        } else if (stage === STAGES[3]) {
-            contentHTML = `<p>Terima kasih telah melakukan daftar ulang. Berikut adalah Nomor ID Siswa (NIS) Anda:</p><div class="my-4 p-4 bg-blue-100 text-blue-800 font-mono text-xl text-center rounded-lg shadow-inner">${currentUserData.studentIdNumber}</div><p>Harap simpan nomor ini baik-baik.</p>`;
-        } else if (stage === STAGES[4]) {
-            contentHTML = currentUserData.krsLink ? `<p>Kartu Rencana Studi (KRS) Anda sudah tersedia.</p><a href="${currentUserData.krsLink}" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition duration-300"><i class="fas fa-download"></i>Dapatkan KRS</a>` : `<p>KRS Anda sedang dipersiapkan oleh admin.</p>`;
-        } else if (stage === STAGES[5]) {
-            contentHTML = currentUserData.classLink ? `<p>Selamat! Anda telah ditempatkan di kelas.</p><a href="${currentUserData.classLink}" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition duration-300"><i class="fab fa-whatsapp"></i>Gabung Kelas</a>` : `<p>Proses penempatan kelas sedang berlangsung.</p>`;
+                : `<p>Selamat! Anda lolos tahap seleksi. Silakan lakukan daftar ulang.</p><button id="reregister-btn" class="mt-4 bg-green-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-700 flex items-center gap-2"><i class="fas fa-check"></i>Konfirmasi Daftar Ulang</button>`;
         } else if (stage === STAGES[6]) {
+            title = `<h2 class="text-2xl font-bold mb-4">Tahap: ${stage}</h2>`;
             contentHTML = `<p class="text-lg font-semibold">Selamat datang di Cendekia Aksara!</p>`;
              if(currentUserData.orientationTasks && currentUserData.orientationTasks.length > 0){
-                contentHTML += `<p class="mt-4">Berikut adalah tugas untuk Pekan Orientasi:</p><div class="mt-4 space-y-4">${currentUserData.orientationTasks.map(task => `<div class="p-4 border rounded-lg bg-gray-50"><h4 class="font-bold text-gray-800">${task.title}</h4><p class="text-sm text-gray-600 mt-1">${task.description}</p></div>`).join('')}</div>`;
+                contentHTML += `<p class="mt-4">Berikut adalah tugas untuk Pekan Orientasi:</p><div class="mt-4 space-y-4">${currentUserData.orientationTasks.map((task, index) => { const answer = currentUserData.orientationAnswers ? currentUserData.orientationAnswers[index] : null; return `<div class="p-4 border rounded-lg bg-gray-50"><h4 class="font-bold text-gray-800">${task.title}</h4><p class="text-sm text-gray-600 mt-1">${task.description}</p>${answer ? `<div class="mt-3 p-3 bg-green-100 rounded-md"><p class="text-sm font-semibold text-green-800">Jawaban Anda:</p><p class="mt-1 text-green-700 italic">"${answer}"</p></div>` : `<form class="submit-orientation-task-form mt-2" data-task-index="${index}"><textarea class="w-full p-2 border rounded-md" rows="3" required placeholder="Tulis jawaban Anda..."></textarea><button type="submit" class="mt-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Kirim</button></form>`}</div>`; }).join('')}</div>`;
             } else {
-                contentHTML += `<p class="mt-4">Jadwal pekan orientasi akan segera diumumkan. Sampai jumpa di kelas!</p>`;
+                contentHTML += `<p class="mt-4">Jadwal pekan orientasi akan segera diumumkan.</p>`;
             }
+        } else if (stage === STAGES[0]) {
+            contentHTML = `<p>Terima kasih telah mendaftar di Cendekia Aksara. Data Anda sedang kami proses.</p>`;
+        } else if (stage === STAGES[3]) {
+            contentHTML = `<p>Terima kasih telah melakukan daftar ulang. Berikut adalah Nomor ID Siswa (NIS) Anda:</p><div class="my-4 p-4 bg-blue-100 text-blue-800 font-mono text-xl text-center rounded-lg shadow-inner">${currentUserData.studentIdNumber || 'Sedang Diproses'}</div><p>Harap simpan nomor ini baik-baik.</p>`;
+        } else if (stage === STAGES[4]) {
+            contentHTML = currentUserData.krsLink ? `<p>Kartu Rencana Studi (KRS) Anda sudah tersedia.</p><a href="${currentUserData.krsLink}" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700"><i class="fas fa-download"></i>Dapatkan KRS</a>` : `<p>KRS Anda sedang dipersiapkan oleh admin.</p>`;
+        } else if (stage === STAGES[5]) {
+            contentHTML = currentUserData.classLink ? `<p>Selamat! Anda telah ditempatkan di kelas.</p><a href="${currentUserData.classLink}" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700"><i class="fab fa-whatsapp"></i>Gabung Kelas</a>` : `<p>Proses penempatan kelas sedang berlangsung.</p>`;
+        } else {
+            contentHTML = `<p>Informasi untuk tahap ini akan segera tersedia. Mohon periksa kembali nanti.</p>`;
         }
         container.innerHTML = title + contentHTML;
 
         document.getElementById('reregister-btn')?.addEventListener('click', handleReregistration);
         document.querySelectorAll('.submit-task-form').forEach(form => form.addEventListener('submit', handleTaskSubmission));
+        document.querySelectorAll('.submit-orientation-task-form').forEach(form => form.addEventListener('submit', handleOrientationTaskSubmission));
         document.getElementById('recovery-btn')?.addEventListener('click', handleRecovery);
     }
     
+    async function handleOrientationTaskSubmission(e) {
+        e.preventDefault();
+        const form = e.target;
+        const button = form.querySelector('button');
+        button.disabled = true; button.textContent = 'Mengirim...';
+        const taskIndex = form.dataset.taskIndex;
+        const answer = form.querySelector('textarea').value;
+        const userDocRef = doc(db, 'users', currentUserData.uid);
+        await updateDoc(userDocRef, { [`orientationAnswers.${taskIndex}`]: answer });
+        showNotification('Jawaban berhasil dikirim!', 'success');
+    }
+
     async function handleRecovery() {
         const btn = document.getElementById('recovery-btn');
-        btn.disabled = true;
-        btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
-
+        btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
         const userDocRef = doc(db, 'users', currentUserData.uid);
-        await updateDoc(userDocRef, { currentStage: STAGES[0], isRejected: false, rejectionReason: null, selectionTasks: [], hasReRegistered: false, studentIdNumber: null, krsLink: null, classLink: null, orientationTasks: [] });
-        showNotification('Akun Anda telah dipulihkan. Anda bisa mendaftar lagi saat pendaftaran dibuka.', 'success');
+        await updateDoc(userDocRef, { currentStage: STAGES[0], isRejected: false, rejectionReason: null, selectionTasks: [], hasReRegistered: false, studentIdNumber: null, krsLink: null, classLink: null, orientationTasks: [], orientationAnswers: {} });
+        showNotification('Akun Anda telah dipulihkan.', 'success');
     }
 
     async function handleReregistration() {
         const btn = document.getElementById('reregister-btn');
-        btn.disabled = true;
-        btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
-        
+        btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
         const nis = `CA-${new Date().getFullYear()}-${currentUserData.uid.substring(0, 4).toUpperCase()}`;
         const userDocRef = doc(db, 'users', currentUserData.uid);
         await updateDoc(userDocRef, { hasReRegistered: true, currentStage: STAGES[3], studentIdNumber: nis });
@@ -529,20 +534,16 @@
         e.preventDefault();
         const form = e.target;
         const button = form.querySelector('button');
-        button.disabled = true;
-        button.textContent = 'Mengirim...';
-
+        button.disabled = true; button.textContent = 'Mengirim...';
         const taskIndex = form.dataset.taskIndex;
         const answer = form.querySelector('textarea').value;
         let updatedTasks = [...(currentUserData.selectionTasks || [])];
         updatedTasks[taskIndex].answer = answer;
-
         const userDocRef = doc(db, 'users', currentUserData.uid);
         await updateDoc(userDocRef, { selectionTasks: updatedTasks });
         showNotification('Jawaban berhasil dikirim!', 'success');
     }
 
-    // --- FUNGSI RENDER VIEW ADMIN ---
     function renderAdminView() {
         updateView('admin-view');
         if (unsubscribeApplicants) unsubscribeApplicants();
@@ -561,14 +562,11 @@
         });
     }
 
-    async function renderAdminConsole() {
+    async function updateAdminConsole() {
         const q = query(collection(db, "users"), where("role", "==", "siswa"), where("isRejected", "==", false));
         const querySnapshot = await getDocs(q);
         const applicantCount = querySnapshot.size;
-        updateAdminConsole(applicantCount);
-    }
-
-    function updateAdminConsole(applicantCount) {
+        
         const { isOpen, maxApplicants, deadline } = registrationSettings;
         const statusText = document.getElementById('console-reg-status-text');
         const quotaText = document.getElementById('console-reg-quota-text');
@@ -589,6 +587,8 @@
             const d = deadline.toDate();
             const localISOString = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
             deadlineInput.value = localISOString;
+        } else {
+            deadlineInput.value = '';
         }
     }
     
@@ -600,34 +600,24 @@
 
     document.getElementById('console-save-deadline-btn').addEventListener('click', async () => {
         const deadlineValue = document.getElementById('console-deadline-input').value;
+        const settingsDocRef = doc(db, 'config', 'settings');
         if (deadlineValue) {
             const deadlineDate = new Date(deadlineValue);
-            const settingsDocRef = doc(db, 'config', 'settings');
             await updateDoc(settingsDocRef, { deadline: Timestamp.fromDate(deadlineDate) });
-            showNotification('Batas waktu pendaftaran berhasil disimpan.', 'success');
+            showNotification('Batas waktu berhasil disimpan.', 'success');
         } else {
-            showNotification('Silakan pilih tanggal dan waktu.', 'error');
+            await updateDoc(settingsDocRef, { deadline: null });
+            showNotification('Batas waktu berhasil dihapus.', 'info');
         }
     });
-
 
     function renderAdminDashboardCards(applicants = []) {
         const container = document.getElementById('admin-dashboard-cards');
         const currentFilter = document.querySelector('.dashboard-card.bg-blue-200')?.dataset.stage || STAGES[0];
-
         container.innerHTML = STAGES.map(stage => {
             const count = applicants.filter(a => a.currentStage === stage && !a.isRejected).length;
             const isActive = stage === currentFilter;
-            return `
-                <div class="dashboard-card p-4 rounded-xl shadow-md cursor-pointer transition duration-300 ${isActive ? 'bg-blue-200' : 'bg-white'}" data-stage="${stage}">
-                    <div class="flex items-center gap-3">
-                        <div class="bg-blue-100 p-2 rounded-lg"><i class="fas ${STAGE_ICONS[STAGES.indexOf(stage)]} text-blue-600"></i></div>
-                        <div>
-                            <p class="text-gray-500 text-sm font-semibold">${stage}</p>
-                            <p class="text-2xl font-bold">${count}</p>
-                        </div>
-                    </div>
-                </div>`;
+            return `<div class="dashboard-card p-4 rounded-xl shadow-md cursor-pointer transition duration-300 ${isActive ? 'bg-blue-200' : 'bg-white'}" data-stage="${stage}"><div class="flex items-center gap-3"><div class="bg-blue-100 p-2 rounded-lg"><i class="fas ${STAGE_ICONS[STAGES.indexOf(stage)]} text-blue-600"></i></div><div><p class="text-gray-500 text-sm font-semibold">${stage}</p><p class="text-2xl font-bold">${count}</p></div></div></div>`;
         }).join('');
     }
     
@@ -635,43 +625,10 @@
         const container = document.getElementById('admin-table-container');
         document.querySelectorAll('.dashboard-card').forEach(c => c.classList.remove('bg-blue-200', 'bg-white'));
         document.querySelectorAll('.dashboard-card').forEach(c => c.classList.add(c.dataset.stage === stageFilter ? 'bg-blue-200' : 'bg-white'));
-        
         const applicants = allApplicants.filter(a => a.currentStage === stageFilter);
-
-        let tableHTML = `
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold">Daftar Siswa - Tahap: ${stageFilter}</h3>
-                ${(stageFilter === 'Daftar Ulang' || stageFilter === 'Dapat Nomor ID') ? `<button class="export-btn bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2" data-stage="${stageFilter}"><i class="fas fa-file-csv"></i>Ekspor ke CSV</button>` : ''}
-            </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama & Status</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Daftar</th>
-                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="applicant-table-body" class="bg-white divide-y divide-gray-200">
-                        ${applicants.length > 0 ? applicants.sort((a,b) => (b.createdAt?.toDate()||0) - (a.createdAt?.toDate()||0)).map(applicant => `
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-medium text-gray-900">${applicant.name}</div>
-                                    <div class="text-sm text-gray-500">${applicant.email}</div>
-                                    ${applicant.isRejected ? '<span class="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Ditolak</span>' : ''}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${applicant.createdAt && typeof applicant.createdAt.toDate === 'function' ? applicant.createdAt.toDate().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A'}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium"><button class="text-indigo-600 hover:text-indigo-900 manage-btn" data-id="${applicant.id}"><i class="fas fa-edit mr-2"></i>Kelola</button></td>
-                            </tr>
-                        `).join('') : `<tr><td colspan="3" class="text-center py-10 text-gray-500">Tidak ada siswa di tahap ini.</td></tr>`}
-                    </tbody>
-                </table>
-            </div>`;
-        
-        container.innerHTML = tableHTML;
+        container.innerHTML = `<div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold">Daftar Siswa - Tahap: ${stageFilter}</h3>${(stageFilter === 'Daftar Ulang' || stageFilter === 'Dapat Nomor ID') ? `<button class="export-btn bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2" data-stage="${stageFilter}"><i class="fas fa-file-csv"></i>Ekspor CSV</button>` : ''}</div><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama & Status</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal Daftar</th><th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aksi</th></tr></thead><tbody id="applicant-table-body" class="bg-white divide-y divide-gray-200">${applicants.length > 0 ? applicants.sort((a,b) => (b.createdAt?.toDate()||0) - (a.createdAt?.toDate()||0)).map(applicant => `<tr><td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${applicant.name}</div><div class="text-sm text-gray-500">${applicant.email}</div>${applicant.isRejected ? '<span class="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Ditolak</span>' : ''}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${applicant.createdAt?.toDate().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) || 'N/A'}</td><td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium"><button class="text-indigo-600 hover:text-indigo-900 manage-btn" data-id="${applicant.id}"><i class="fas fa-edit mr-2"></i>Kelola</button></td></tr>`).join('') : `<tr><td colspan="3" class="text-center py-10 text-gray-500">Tidak ada siswa di tahap ini.</td></tr>`}</tbody></table></div>`;
     }
     
-    // --- EVENT LISTENERS ADMIN ---
     document.getElementById('admin-view').addEventListener('click', async e => {
         const card = e.target.closest('.dashboard-card');
         if (card) {
@@ -681,14 +638,12 @@
             const allApplicants = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderAdminTable(allApplicants, stage);
         }
-
         const manageBtn = e.target.closest('.manage-btn');
         if (manageBtn) {
             const applicantId = manageBtn.dataset.id;
             const applicantDoc = await getDoc(doc(db, 'users', applicantId));
             renderAdminModal(applicantDoc.data(), applicantId);
         }
-        
         const exportBtn = e.target.closest('.export-btn');
         if(exportBtn) {
              const stage = exportBtn.dataset.stage;
@@ -702,96 +657,36 @@
     function renderAdminModal(data, id) {
         const modal = document.getElementById('admin-modal');
         const container = document.getElementById('modal-content-container');
-        
-        let contentHTML = `
-            <div class="p-6">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h3 class="text-xl font-bold">${data.name}</h3>
-                        <p class="text-sm text-gray-500">${data.email}</p>
-                    </div>
-                    <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600" aria-label="Tutup modal"><i class="fas fa-times text-2xl"></i></button>
-                </div>
-                <div class="mt-4 border-t pt-4">
-                    <p class="font-semibold mb-1">Motivasi:</p>
-                    <p class="text-gray-700 bg-gray-50 p-3 rounded-md border">${data.motivation || 'N/A'}</p>
-                </div>
-                
-                <div class="mt-4 border-t pt-4">
-                    <label for="stage-selector" class="block font-semibold mb-2">Ubah Status Pendaftaran:</label>
-                    <select id="stage-selector" class="w-full p-2 border rounded-lg bg-white">
-                        ${STAGES.map(s => `<option value="${s}" ${data.currentStage === s ? 'selected' : ''}>${s}</option>`).join('')}
-                    </select>
-                </div>`;
+        let contentHTML = `<div class="p-6"><div class="flex justify-between items-start"><div><h3 class="text-xl font-bold">${data.name}</h3><p class="text-sm text-gray-500">${data.email}</p></div><button id="close-modal-btn" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-2xl"></i></button></div><div class="mt-4 border-t pt-4"><p class="font-semibold mb-1">Motivasi:</p><p class="text-gray-700 bg-gray-50 p-3 rounded-md border">${data.motivation || 'N/A'}</p></div><div class="mt-4 border-t pt-4"><label for="stage-selector" class="block font-semibold mb-2">Ubah Status Pendaftaran:</label><select id="stage-selector" class="w-full p-2 border rounded-lg bg-white">${STAGES.map(s => `<option value="${s}" ${data.currentStage === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>`;
         
         if (data.currentStage === 'Seleksi') {
-            contentHTML += `
-                <div class="mt-4 border-t pt-4">
-                    <label class="block font-semibold mb-2">Jawaban Tugas Seleksi:</label>
-                    ${data.selectionTasks && data.selectionTasks.length > 0 ? data.selectionTasks.map(t => `<div class="p-3 bg-gray-100 rounded mb-2 border"><strong>Q: ${t.question}</strong><br><em class="text-gray-700">A: ${t.answer || 'Belum dijawab'}</em></div>`).join('') : '<p class="text-gray-500">Belum ada tugas yang diberikan.</p>'}
-                    
-                    <div class="mt-3 flex gap-2">
-                        <input id="new-task-input" type="text" placeholder="Ketik pertanyaan seleksi baru..." class="w-full p-2 border rounded-lg">
-                        <button id="add-task-btn" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">Tambah</button>
-                    </div>
-                </div>
-                <div class="mt-4 border-t pt-4 bg-red-50 p-4 rounded-lg">
-                    <label for="rejection-reason" class="block font-semibold mb-2 text-red-800">Tolak Pendaftaran (Opsional):</label>
-                    <textarea id="rejection-reason" class="w-full p-2 border rounded-lg" placeholder="Tulis alasan penolakan di sini..."></textarea>
-                    <button id="reject-btn" class="mt-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center gap-2"><i class="fas fa-times-circle"></i>Tolak Pendaftar</button>
-                </div>`;
-        }
-        
-        if (data.currentStage === 'Kartu Rencana Studi') {
-             contentHTML += `<div class="mt-4 border-t pt-4"><label for="krs-link-input" class="block font-semibold mb-2">Link KRS:</label><input id="krs-link-input" type="url" class="w-full p-2 border rounded-lg" value="${data.krsLink || ''}" placeholder="https://docs.google.com/..."></div>`;
-        }
-        if (data.currentStage === 'Seleksi Kelas') {
-             contentHTML += `<div class="mt-4 border-t pt-4"><label for="class-link-input" class="block font-semibold mb-2">Link Grup Kelas:</label><input id="class-link-input" type="url" class="w-full p-2 border rounded-lg" value="${data.classLink || ''}" placeholder="https://chat.whatsapp.com/..."></div>`;
-        }
-         if (data.currentStage === 'Pekan Orientasi') {
-             contentHTML += `
-                <div class="mt-4 border-t pt-4">
-                    <label class="block font-semibold mb-2">Tugas Orientasi:</label>
-                    <div id="orientation-task-list" class="space-y-2 mb-3">
-                        ${(data.orientationTasks || []).map(t => `<div class="p-2 bg-gray-100 rounded border"><strong>${t.title}</strong>: ${t.description}</div>`).join('') || '<p class="text-gray-500">Belum ada tugas orientasi.</p>'}
-                    </div>
-                    <input id="orientation-title" type="text" placeholder="Judul Tugas" class="w-full p-2 border rounded-lg mb-2">
-                    <textarea id="orientation-desc" placeholder="Deskripsi singkat tugas" class="w-full p-2 border rounded-lg"></textarea>
-                    <button id="add-orientation-task-btn" class="mt-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">Tambah Tugas</button>
-                </div>`;
+            contentHTML += `<div class="mt-4 border-t pt-4"><label class="block font-semibold mb-2">Jawaban Tugas Seleksi:</label>${data.selectionTasks?.length > 0 ? data.selectionTasks.map(t => `<div class="p-3 bg-gray-100 rounded mb-2 border"><strong>Q: ${t.question}</strong><br><em class="text-gray-700">A: ${t.answer || 'Belum dijawab'}</em></div>`).join('') : '<p class="text-gray-500">Belum ada tugas.</p>'}<div class="mt-3 flex gap-2"><input id="new-task-input" type="text" placeholder="Ketik pertanyaan baru..." class="w-full p-2 border rounded-lg"><button id="add-task-btn" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">Tambah</button></div></div><div class="mt-4 border-t pt-4 bg-red-50 p-4 rounded-lg"><label for="rejection-reason" class="block font-semibold mb-2 text-red-800">Tolak Pendaftaran:</label><textarea id="rejection-reason" class="w-full p-2 border rounded-lg" placeholder="Tulis alasan penolakan..."></textarea><button id="reject-btn" class="mt-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center gap-2"><i class="fas fa-times-circle"></i>Tolak Pendaftar</button></div>`;
+        } else if (data.currentStage === 'Pekan Orientasi') {
+             contentHTML += `<div class="mt-4 border-t pt-4"><label class="block font-semibold mb-2">Tugas & Jawaban Orientasi:</label><div class="space-y-4 mb-3">${(data.orientationTasks || []).map((task, index) => { const answer = data.orientationAnswers?.[index] || 'Belum dijawab'; return `<div class="p-3 bg-gray-100 rounded border"><strong>Tugas: ${task.title}</strong><p class="text-sm text-gray-600">${task.description}</p><div class="mt-2 p-2 bg-white border-l-4 border-blue-500"><p class="font-semibold text-sm">Jawaban:</p><em class="text-gray-700">"${answer}"</em></div></div>`; }).join('') || '<p class="text-gray-500">Belum ada tugas.</p>'}</div><input id="orientation-title" type="text" placeholder="Judul Tugas" class="w-full p-2 border rounded-lg mb-2"><textarea id="orientation-desc" placeholder="Deskripsi tugas" class="w-full p-2 border rounded-lg"></textarea><button id="add-orientation-task-btn" class="mt-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">Tambah Tugas</button></div>`;
+        } else if (data.currentStage === 'Kartu Rencana Studi') {
+            contentHTML += `<div class="mt-4 border-t pt-4"><label for="krs-link-input" class="block font-semibold mb-2">Link KRS:</label><input id="krs-link-input" type="url" class="w-full p-2 border rounded-lg" value="${data.krsLink || ''}" placeholder="https://..."></div>`;
+        } else if (data.currentStage === 'Seleksi Kelas') {
+            contentHTML += `<div class="mt-4 border-t pt-4"><label for="class-link-input" class="block font-semibold mb-2">Link Grup Kelas:</label><input id="class-link-input" type="url" class="w-full p-2 border rounded-lg" value="${data.classLink || ''}" placeholder="https://wa.me/..."></div>`;
         }
 
-        contentHTML += `
-                <div class="mt-6 text-right border-t pt-4">
-                    <button id="save-changes-btn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"><i class="fas fa-save"></i>Simpan Perubahan</button>
-                </div>
-            </div>`;
-
+        contentHTML += `<div class="mt-6 text-right border-t pt-4"><button id="save-changes-btn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"><i class="fas fa-save"></i>Simpan</button></div></div>`;
         container.innerHTML = contentHTML;
         modal.classList.remove('hidden');
 
         document.getElementById('close-modal-btn').addEventListener('click', () => modal.classList.add('hidden'));
         document.getElementById('save-changes-btn').addEventListener('click', () => saveAdminChanges(id));
-        
-        const rejectBtn = document.getElementById('reject-btn');
-        if(rejectBtn) rejectBtn.addEventListener('click', () => rejectApplicant(id));
-        
-        const addTaskBtn = document.getElementById('add-task-btn');
-        if(addTaskBtn) addTaskBtn.addEventListener('click', () => addSelectionTask(id, data));
-        
-        const addOrientationTaskBtn = document.getElementById('add-orientation-task-btn');
-        if(addOrientationTaskBtn) addOrientationTaskBtn.addEventListener('click', () => addOrientationTask(id, data));
+        document.getElementById('reject-btn')?.addEventListener('click', () => rejectApplicant(id));
+        document.getElementById('add-task-btn')?.addEventListener('click', () => addSelectionTask(id, data));
+        document.getElementById('add-orientation-task-btn')?.addEventListener('click', () => addOrientationTask(id, data));
     }
     
     async function saveAdminChanges(id) {
         const newStage = document.getElementById('stage-selector').value;
         const krsLink = document.getElementById('krs-link-input')?.value;
         const classLink = document.getElementById('class-link-input')?.value;
-        
         let updates = { currentStage: newStage, isRejected: false, rejectionReason: null };
         if (krsLink !== undefined) updates.krsLink = krsLink || null;
         if (classLink !== undefined) updates.classLink = classLink || null;
-        
         await updateDoc(doc(db, 'users', id), updates);
         showNotification('Perubahan berhasil disimpan!', 'success');
         document.getElementById('admin-modal').classList.add('hidden');
@@ -822,7 +717,7 @@
         const descInput = document.getElementById('orientation-desc');
         const title = titleInput.value;
         const description = descInput.value;
-        if (!title || !description) { showNotification('Judul dan deskripsi tugas harus diisi.', 'error'); return; }
+        if (!title || !description) { showNotification('Judul dan deskripsi harus diisi.', 'error'); return; }
         const newTask = { title, description };
         const updatedTasks = [...(data.orientationTasks || []), newTask];
         await updateDoc(doc(db, 'users', id), { orientationTasks: updatedTasks });
@@ -831,23 +726,49 @@
         showNotification('Tugas orientasi berhasil ditambahkan.', 'success');
     }
 
+    async function renderArchiveView() {
+        const container = document.getElementById('archive-table-container');
+        container.innerHTML = `<div class="text-center py-10"><i class="fas fa-spinner fa-spin text-3xl"></i></div>`;
+        const q = query(collection(db, "users"), where('currentStage', '==', 'Pekan Orientasi'));
+        const querySnapshot = await getDocs(q);
+        const graduates = querySnapshot.docs.map(doc => doc.data());
+        let tableHTML = `<div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold">Total Lulus: ${graduates.length}</h3><button id="download-pdf-btn" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center gap-2"><i class="fas fa-file-pdf"></i> Unduh PDF</button></div><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nomor ID</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Angkatan</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">${graduates.length > 0 ? graduates.map(student => { const joinDate = student.createdAt.toDate(); const angkatan = `${joinDate.toLocaleString('id-ID', { month: 'long' })} ${joinDate.getFullYear()}`; return `<tr><td class="px-6 py-4">${student.name}</td><td class="px-6 py-4 font-mono">${student.studentIdNumber || 'N/A'}</td><td class="px-6 py-4">${angkatan}</td></tr>`; }).join('') : `<tr><td colspan="3" class="text-center py-10">Belum ada siswa yang lulus.</td></tr>`}</tbody></table></div>`;
+        container.innerHTML = tableHTML;
+        document.getElementById('download-pdf-btn').addEventListener('click', () => graduates.length > 0 ? downloadArchiveAsPDF(graduates) : showNotification('Tidak ada data untuk diunduh.', 'info'));
+    }
+
+    function downloadArchiveAsPDF(graduates) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.setFontSize(18);
+        doc.text("Arsip Siswa Lulus - Cendekia Aksara", 14, 22);
+        const tableColumn = ["Nama Lengkap", "Nomor ID Siswa", "Angkatan"];
+        const tableRows = [];
+        graduates.forEach(student => {
+            const joinDate = student.createdAt.toDate();
+            const angkatan = `${joinDate.toLocaleString('id-ID', { month: 'long' })} ${joinDate.getFullYear()}`;
+            tableRows.push([student.name, student.studentIdNumber || 'N/A', angkatan]);
+        });
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 30
+        });
+        doc.save(`arsip-siswa-lulus_${new Date().toISOString().split('T')[0]}.pdf`);
+        showNotification('PDF sedang dibuat...', 'success');
+    }
+
     function exportToCSV(data, stage) {
-        if (data.length === 0) {
-            showNotification('Tidak ada data untuk diekspor.', 'info');
-            return;
-        }
+        if (data.length === 0) { showNotification('Tidak ada data untuk diekspor.', 'info'); return; }
         let csvContent = "data:text/csv;charset=utf-8,";
         let headers = ["Nama Lengkap", "Email"];
         if(stage === 'Dapat Nomor ID') headers.push("Nomor ID Siswa");
-        
         csvContent += headers.join(",") + "\r\n";
-        
         data.forEach(item => {
             let row = [`"${item.name}"`, `"${item.email}"`];
             if(stage === 'Dapat Nomor ID') row.push(`"${item.studentIdNumber || 'N/A'}"`);
             csvContent += row.join(",") + "\r\n";
         });
-        
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
