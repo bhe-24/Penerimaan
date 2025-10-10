@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Pendaftaran - Cendekia Aksara</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <!-- Script Firebase dipindahkan ke dalam tag script utama dengan type="module" -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+        body { font-family: 'Poppins', sans-serif; background-color: #f0f4f8; }
+        .view { display: none; }
+        .active-view { display: block; }
+        .step { transition: all 0.3s ease; }
+        .step-completed { background-color: #16a34a; color: white; }
+        .step-active { background-color: #2563eb; color: white; }
+        .step-pending { background-color: #e5e7eb; color: #4b5563; }
+        .dashboard-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        
+        /* Style untuk Notifikasi Toast */
+        #notification-container { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 100; display: flex; flex-direction: column; gap: 0.75rem; }
+        .toast { display: flex; align-items: center; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -2px rgba(0,0,0,.1); opacity: 0; transform: translateX(100%); animation: slideIn 0.5s forwards, fadeOut 0.5s 4.5s forwards; }
+        .toast-success { background-color: #dcfce7; color: #166534; }
+        .toast-error { background-color: #fee2e2; color: #991b1b; }
+        .toast-info { background-color: #e0f2fe; color: #075985; }
+        .toast i { margin-right: 0.75rem; font-size: 1.25rem; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+    </style>
+</head>
+<body class="antialiased text-gray-800">
+
+    <!-- Container untuk Notifikasi -->
+    <div id="notification-container"></div>
+
+    <div id="app-container" class="min-h-screen flex flex-col">
+        <header class="bg-white shadow-md sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-book-open-reader text-3xl text-[#005a9c]"></i>
+                        <h1 class="text-2xl font-bold text-gray-800">Cendekia Aksara</h1>
+                    </div>
+                    <button id="universal-logout-btn" class="hidden bg-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-700 transition duration-300 flex items-center gap-2">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-grow p-4 sm:p-6">
+            <!-- Login & Register View -->
+            <div id="auth-view" class="view">
+                 <div class="w-full max-w-md p-8 bg-white rounded-xl shadow-lg mx-auto mt-10">
+                    <!-- [REVISI] Kontainer Pendaftaran Ditutup -->
+                    <div id="registration-closed-container" class="hidden text-center mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <i class="fas fa-door-closed text-4xl text-yellow-500 mb-3"></i>
+                        <h2 class="text-xl font-bold text-yellow-800">Pendaftaran Telah Ditutup</h2>
+                        <p class="mt-1 text-sm text-yellow-700">Saat ini pendaftaran belum dibuka atau kuota sudah terpenuhi. Silakan kembali lagi nanti.</p>
+                    </div>
+                    <div id="login-container">
+                        <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Masuk ke Portal</h2>
+                        <form id="login-form">
+                            <div class="mb-4">
+                                <label for="login-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input type="email" id="login-email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-[#005a9c] focus:border-[#005a9c]">
+                            </div>
+                            <div class="mb-6">
+                                <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                                <input type="password" id="login-password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-[#005a9c] focus:border-[#005a9c]">
+                            </div>
+                            <button type="submit" class="w-full bg-[#005a9c] text-white py-2 rounded-lg font-semibold hover:bg-[#004b80] transition duration-300 flex items-center justify-center disabled:opacity-75">
+                                <i class="fas fa-spinner fa-spin mr-2 hidden"></i>
+                                <span class="button-text">Login</span>
+                            </button>
+                        </form>
+                        <p class="mt-6 text-center text-sm">Belum punya akun? <a href="#" id="show-register" class="font-medium text-[#005a9c] hover:underline">Daftar di sini</a></p>
+                    </div>
+                    <div id="register-container" class="hidden">
+                        <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Buat Akun Baru</h2>
+                        <form id="register-form">
+                            <div class="mb-4"><label for="register-name" class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label><input type="text" id="register-name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg"></div>
+                            <div class="mb-4"><label for="register-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" id="register-email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg"></div>
+                            <div class="mb-4"><label for="register-password" class="block text-sm font-medium text-gray-700 mb-1">Password (min. 6 karakter)</label><input type="password" id="register-password" required minlength="6" class="w-full px-4 py-2 border border-gray-300 rounded-lg"></div>
+                            <div class="mb-6"><label for="register-motivation" class="block text-sm font-medium text-gray-700 mb-1">Motivasi Bergabung</label><textarea id="register-motivation" rows="3" required class="w-full px-4 py-2 border border-gray-300 rounded-lg"></textarea></div>
+                            <button type="submit" class="w-full bg-[#005a9c] text-white py-2 rounded-lg font-semibold hover:bg-[#004b80] transition duration-300 flex items-center justify-center disabled:opacity-75">
+                                <i class="fas fa-spinner fa-spin mr-2 hidden"></i>
+                                <span class="button-text">Daftar</span>
+                            </button>
+                        </form>
+                        <p class="mt-6 text-center text-sm">Sudah punya akun? <a href="#" id="show-login" class="font-medium text-[#005a9c] hover:underline">Masuk di sini</a></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Student Lifecycle View -->
+            <div id="student-view" class="view">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="md:col-span-1" id="student-timeline-container"></div>
+                    <div class="md:col-span-2 bg-white p-6 sm:p-8 rounded-xl shadow-lg" id="student-content-container"></div>
+                </div>
+            </div>
+
+            <!-- Admin Dashboard View -->
+            <div id="admin-view" class="view">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold">Dasbor Siswa</h2>
+                    <button id="open-console-btn" class="bg-gray-800 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-900 transition duration-300 flex items-center gap-2">
+                        <i class="fas fa-cogs"></i> Buka Konsol Pendaftaran
+                    </button>
+                </div>
+                <div id="admin-dashboard-cards" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8"></div>
+                <div id="admin-table-container" class="bg-white p-6 rounded-xl shadow-lg"></div>
+            </div>
+
+            <!-- Admin Console View -->
+            <div id="admin-console-view" class="view">
+                <div class="max-w-4xl mx-auto">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold">Konsol Pendaftaran</h2>
+                        <button id="back-to-dashboard-btn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-semibold hover:bg-gray-300 transition duration-300 flex items-center gap-2">
+                            <i class="fas fa-arrow-left"></i> Kembali ke Dasbor
+                        </button>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Status Pendaftaran</p>
+                                <p id="console-reg-status-text" class="text-2xl font-bold"></p>
+                            </div>
+                            <div class="md:text-center">
+                                <p class="text-sm font-medium text-gray-500">Kuota Pendaftar</p>
+                                <p id="console-reg-quota-text" class="text-2xl font-bold"></p>
+                            </div>
+                            <div>
+                                 <button id="console-toggle-registration-btn" class="w-full text-white px-4 py-3 rounded-lg font-semibold transition duration-300"></button>
+                            </div>
+                        </div>
+                         <div class="mt-4 border-t pt-4">
+                            <label for="console-deadline-input" class="block text-sm font-medium text-gray-700 mb-2">Atur Batas Waktu Penutupan Otomatis</label>
+                            <div class="flex gap-2">
+                                <input type="datetime-local" id="console-deadline-input" class="w-full p-2 border border-gray-300 rounded-lg">
+                                <button id="console-save-deadline-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Simpan</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Universal Loading & Error Views -->
+            <div id="loading-view" class="view text-center py-20"><div class="mx-auto border-4 border-gray-200 border-t-4 border-t-[#005a9c] rounded-full w-12 h-12 animate-spin"></div><p class="mt-4 text-gray-600">Memuat data...</p></div>
+            <div id="data-error-view" class="view">
+                <div class="w-full max-w-md text-center bg-white p-8 rounded-lg shadow-lg mx-auto mt-10">
+                    <i class="fas fa-exclamation-triangle text-5xl text-red-500 mb-4"></i>
+                    <h2 class="text-2xl font-bold text-gray-800">Error: Sesi Bermasalah</h2>
+                    <p class="mt-2 text-gray-600">Kami tidak dapat memuat data sesi Anda. Ini bisa terjadi karena masalah koneksi atau data profil yang tidak sinkron.</p>
+                    <p class="mt-2 text-sm text-gray-500">Silakan coba logout dan login kembali. Jika masalah berlanjut, hubungi administrator.</p>
+                </div>
+            </div>
+
+            <!-- Admin Modal -->
+            <div id="admin-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+                <div class="relative w-full max-w-3xl shadow-lg rounded-xl bg-white" id="modal-content-container"></div>
+            </div>
+        </main>
+    </div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, where, query, serverTimestamp, getDocs, Timestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+    const firebaseConfig = { apiKey: "AIzaSyDpUWUIzPXIZN6rrNtsIqcL6VfOE2RLVl0", authDomain: "mading-cf676.firebaseapp.com", projectId: "mading-cf676", storageBucket: "mading-cf676.appspot.com", messagingSenderId: "72175203671", appId: "1:72175203671:web:7a0676a55beb64bc96ba12" };
+    
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // --- STATE & VARIABEL GLOBAL ---
+    let currentUserData = null;
+    let unsubscribeUser = null;
+    let unsubscribeApplicants = null;
+    let unsubscribeSettings = null; 
+    let registrationSettings = { isOpen: false, maxApplicants: 50, deadline: null }; 
+
+    const STAGES = ["Pendaftaran Awal", "Seleksi", "Daftar Ulang", "Dapat Nomor ID", "Kartu Rencana Studi", "Seleksi Kelas", "Pekan Orientasi"];
+    const STAGE_ICONS = ["fa-user-plus", "fa-clipboard-check", "fa-id-card-alt", "fa-hashtag", "fa-book-reader", "fa-chalkboard-teacher", "fa-rocket"];
+
+    // --- FUNGSI UTILITAS ---
+    const updateView = (viewId) => {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active-view'));
+        document.getElementById(viewId)?.classList.add('active-view');
+    };
+    
+    const showNotification = (message, type = 'success') => {
+        const container = document.getElementById('notification-container');
+        const icons = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle' };
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = `<i class="fas ${icons[type]}"></i><p>${message}</p>`;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 5000);
+    };
+
+    const showLoadingButton = (form, show = true) => {
+        const button = form.querySelector('button[type="submit"]');
+        if (button) {
+            button.disabled = show;
+            button.querySelector('.button-text').classList.toggle('opacity-50', show);
+            button.querySelector('.fa-spinner').classList.toggle('hidden', !show);
+        }
+    };
+    
+    // --- EVENT LISTENERS UI UTAMA ---
+    document.getElementById('show-register').addEventListener('click', async (e) => {
+        e.preventDefault();
+        const deadline = registrationSettings.deadline?.toDate();
+        const isPastDeadline = deadline && new Date() > deadline;
+        const isManuallyOpen = registrationSettings.isOpen;
+        const q = query(collection(db, "users"), where("role", "==", "siswa"), where("isRejected", "==", false));
+        const querySnapshot = await getDocs(q);
+        const applicantCount = querySnapshot.size;
+        const isQuotaFull = applicantCount >= registrationSettings.maxApplicants;
+        const isRegistrationEffectivelyOpen = isManuallyOpen && !isQuotaFull && !isPastDeadline;
+
+        if (isRegistrationEffectivelyOpen) {
+            document.getElementById('login-container').classList.add('hidden');
+            document.getElementById('register-container').classList.remove('hidden');
+        } else {
+            showNotification('Mohon maaf, pendaftaran saat ini ditutup.', 'error');
+        }
+    });
+    document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('register-container').classList.add('hidden'); document.getElementById('login-container').classList.remove('hidden'); });
+    document.getElementById('universal-logout-btn').addEventListener('click', () => {
+        signOut(auth);
+        showNotification("Anda telah berhasil logout.", "info");
+    });
+    document.getElementById('open-console-btn').addEventListener('click', () => {
+        updateView('admin-console-view');
+        renderAdminConsole(); // Render konsol saat dibuka
+    });
+    document.getElementById('back-to-dashboard-btn').addEventListener('click', () => {
+        updateView('admin-view');
+    });
+
+    // --- LOGIKA AUTENTIKASI ---
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const form = e.target;
+        showLoadingButton(form, true);
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+        signInWithEmailAndPassword(auth, email, password)
+            .catch(err => {
+                let message = 'Terjadi kesalahan. Coba lagi.';
+                if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+                    message = 'Email atau password yang Anda masukkan salah.';
+                } else if (err.code === 'auth/invalid-email') {
+                    message = 'Format email tidak valid.';
+                }
+                showNotification(message, 'error');
+            })
+            .finally(() => showLoadingButton(form, false));
+    });
+
+    document.getElementById('register-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const form = e.target;
+        showLoadingButton(form, true);
+        const name = document.getElementById('register-name').value;
+        const email = document.getElementById('register-email').value;
+        const password = document.getElementById('register-password').value;
+        const motivation = document.getElementById('register-motivation').value;
+
+        createUserWithEmailAndPassword(auth, email, password)
+            .then(cred => {
+                const userRole = email.toLowerCase().endsWith('@ac.id') ? 'admin' : 'siswa';
+                const initialStage = userRole === 'admin' ? null : STAGES[0];
+                
+                const newUser = { name, email, motivation, role: userRole, currentStage: initialStage, createdAt: serverTimestamp(), hasReRegistered: false, isRejected: false, rejectionReason: null, krsLink: null, classLink: null, orientationTasks: [], selectionTasks: [] };
+                const userDocRef = doc(db, 'users', cred.user.uid);
+                return setDoc(userDocRef, newUser);
+            })
+            .then(() => {
+                showNotification('Pendaftaran berhasil! Silakan login.', 'success');
+                document.getElementById('show-login').click();
+                form.reset();
+            })
+            .catch(err => {
+                 let message = 'Pendaftaran Gagal: ' + err.message;
+                 if (err.code === 'auth/email-already-in-use') {
+                    message = 'Email ini sudah terdaftar. Silakan login.';
+                 }
+                showNotification(message, 'error');
+            })
+            .finally(() => showLoadingButton(form, false));
+    });
+
+    // --- FUNGSI UNTUK MENGELOLA TAMPILAN PENDAFTARAN ---
+    async function updateRegistrationAvailability() {
+        const deadline = registrationSettings.deadline?.toDate();
+        const isPastDeadline = deadline && new Date() > deadline;
+        const isManuallyOpen = registrationSettings.isOpen;
+
+        const q = query(collection(db, "users"), where("role", "==", "siswa"), where("isRejected", "==", false));
+        const querySnapshot = await getDocs(q);
+        const applicantCount = querySnapshot.size;
+        
+        const isQuotaFull = applicantCount >= registrationSettings.maxApplicants;
+        
+        const isRegistrationEffectivelyOpen = isManuallyOpen && !isQuotaFull && !isPastDeadline;
+
+        const regClosedContainer = document.getElementById('registration-closed-container');
+        const registerContainer = document.getElementById('register-container');
+        const loginContainer = document.getElementById('login-container');
+
+        if (isRegistrationEffectivelyOpen) {
+            regClosedContainer.classList.add('hidden');
+        } else {
+            regClosedContainer.classList.remove('hidden');
+            registerContainer.classList.add('hidden');
+            loginContainer.classList.remove('hidden');
+        }
+    }
+
+    // --- LISTENER PERUBAHAN STATUS LOGIN ---
+    async function setupUserSession(user) {
+        const userRef = doc(db, 'users', user.uid);
+        const docSnap = await getDoc(userRef);
+
+        if (docSnap.exists()) {
+            let data = docSnap.data();
+            let updates = {};
+            
+            const expectedRole = data.email.toLowerCase().endsWith('@ac.id') ? 'admin' : 'siswa';
+            if (data.role !== expectedRole) updates.role = expectedRole;
+            if (expectedRole === 'siswa' && !data.currentStage) updates.currentStage = STAGES[0];
+            if (!data.createdAt) updates.createdAt = serverTimestamp();
+            
+            if (Object.keys(updates).length > 0) {
+                await setDoc(userRef, updates, { merge: true });
+                return { uid: user.uid, ...data, ...updates };
+            }
+            return { uid: user.uid, ...data };
+        } else {
+            const expectedRole = user.email.toLowerCase().endsWith('@ac.id') ? 'admin' : 'siswa';
+            const initialStage = expectedRole === 'siswa' ? STAGES[0] : null;
+            const newUserProfile = { email: user.email, name: user.displayName || "Pengguna Baru", role: expectedRole, currentStage: initialStage, createdAt: serverTimestamp(), };
+            await setDoc(userRef, newUserProfile);
+            return { uid: user.uid, ...newUserProfile };
+        }
+    }
+    
+    // [REVISI] Listener global untuk settings pendaftaran
+    if (unsubscribeSettings) unsubscribeSettings();
+    const settingsDocRef = doc(db, 'config', 'settings');
+    unsubscribeSettings = onSnapshot(settingsDocRef, async (docSnap) => {
+        if (docSnap.exists()) {
+            registrationSettings = docSnap.data();
+        } else {
+            // Inisialisasi dokumen jika belum ada
+            await setDoc(settingsDocRef, { isOpen: false, maxApplicants: 50, deadline: null });
+            registrationSettings = { isOpen: false, maxApplicants: 50, deadline: null };
+        }
+
+        if (!auth.currentUser) {
+            updateRegistrationAvailability();
+        }
+
+        // [FIX] Jika konsol admin sedang terbuka, render ulang konsolnya secara real-time
+        if (document.getElementById('admin-console-view').classList.contains('active-view')) {
+            const q = query(collection(db, "users"), where("role", "==", "siswa"), where("isRejected", "==", false));
+            const querySnapshot = await getDocs(q);
+            const applicantCount = querySnapshot.size;
+            updateAdminConsole(applicantCount);
+        }
+    });
+
+    onAuthStateChanged(auth, user => {
+        if (unsubscribeUser) unsubscribeUser();
+        if (unsubscribeApplicants) unsubscribeApplicants();
+        const logoutBtn = document.getElementById('universal-logout-btn');
+        updateView('loading-view');
+        
+        if (user) {
+            logoutBtn.classList.remove('hidden');
+            setupUserSession(user).then(initialUserData => {
+                showNotification(`Selamat datang kembali, ${initialUserData.name}!`, 'success');
+                
+                if (initialUserData.role === 'admin') {
+                    currentUserData = initialUserData;
+                    renderAdminView();
+                } else {
+                    const userDocRef = doc(db, 'users', user.uid);
+                    unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            currentUserData = { uid: user.uid, ...docSnap.data() };
+                            renderStudentView();
+                        }
+                    }, error => {
+                        console.error("Gagal mendengarkan perubahan data siswa:", error);
+                        updateView('data-error-view');
+                    });
+                }
+            }).catch(error => {
+                console.error("Gagal mengatur sesi pengguna:", error);
+                updateView('data-error-view');
+            });
+        } else {
+            logoutBtn.classList.add('hidden');
+            updateRegistrationAvailability();
+            updateView('auth-view');
+            currentUserData = null;
+        }
+    });
+
+    // --- FUNGSI RENDER VIEW SISWA ---
+    function renderStudentView() {
+        if (!currentUserData) return;
+        renderStudentTimeline();
+        renderStudentContentByStage();
+        updateView('student-view');
+    }
+
+    function renderStudentTimeline() {
+        const container = document.getElementById('student-timeline-container');
+        if (!container) return;
+        const currentStageIndex = STAGES.indexOf(currentUserData.currentStage);
+
+        const timelineItemsHTML = STAGES.map((stage, index) => {
+            let statusClass = 'step-pending';
+            if (index < currentStageIndex) {
+                statusClass = 'step-completed';
+            }
+            if (index === currentStageIndex) {
+                statusClass = 'step-active';
+            }
+            if (currentUserData.isRejected && index > 0) {
+                statusClass = 'step-pending';
+            }
+            return `
+                <li class="mb-8 ml-6">
+                    <span class="absolute flex items-center justify-center w-8 h-8 ${statusClass} rounded-full -left-4 ring-8 ring-white">
+                        <i class="fas ${STAGE_ICONS[index]} text-sm"></i>
+                    </span>
+                    <h4 class="font-semibold">${stage}</h4>
+                </li>`;
+        }).join('');
+
+        container.innerHTML = `
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <h3 class="font-bold text-lg mb-4">Perjalanan Anda</h3>
+                <ol class="relative border-l border-gray-200">
+                    ${timelineItemsHTML}
+                </ol>
+            </div>`;
+    }
+
+    function renderStudentContentByStage() {
+        const container = document.getElementById('student-content-container');
+        const stage = currentUserData.currentStage;
+        let title = `<h2 class="text-2xl font-bold mb-4">Tahap: ${stage}</h2>`;
+        let contentHTML = '';
+
+        if (currentUserData.isRejected) {
+                title = `<div class="text-center"><i class="fas fa-exclamation-circle text-5xl text-red-500 mb-3"></i><h2 class="text-2xl font-bold mb-2 text-red-600">Mohon Maaf, Anda Belum Lolos</h2></div>`;
+                contentHTML = `<p class="text-center text-gray-600">Setelah melalui proses seleksi, kami sampaikan bahwa Anda belum dapat melanjutkan.</p><p class="mt-4 font-semibold text-center">Alasan:</p><p class="p-3 bg-red-50 border border-red-200 rounded-md mt-2 text-center text-red-800">${currentUserData.rejectionReason || 'Tidak ada alasan spesifik.'}</p>`;
+                const deadline = registrationSettings.deadline?.toDate();
+                const isPastDeadline = deadline && new Date() > deadline;
+                if (!registrationSettings.isOpen || isPastDeadline) {
+                    contentHTML += `<button id="recovery-btn" class="mt-6 mx-auto block bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition duration-300">Ajukan Pendaftaran Ulang untuk Periode Berikutnya</button>`;
+                }
+        } else if (stage === STAGES[0]) {
+            contentHTML = `<p>Terima kasih telah mendaftar di Cendekia Aksara. Data Anda sedang kami proses. Mohon tunggu informasi selanjutnya untuk tahap seleksi.</p>`;
+        } else if (stage === STAGES[1]) {
+            if (currentUserData.selectionTasks && currentUserData.selectionTasks.length > 0) {
+                contentHTML = `<p class="mb-4">Untuk melanjutkan, silakan kerjakan tugas seleksi di bawah ini.</p>${currentUserData.selectionTasks.map((task, index) => `<div class="mb-4 p-4 border rounded-lg bg-gray-50"><p class="font-semibold text-gray-800">${task.question}</p>${task.answer ? `<div class="mt-3 p-3 bg-green-100 border border-green-200 rounded-md"><p class="text-sm font-semibold text-green-800">Jawaban Anda (Terkirim):</p><p class="mt-1 text-green-700 italic">"${task.answer}"</p></div>` : `<form class="submit-task-form mt-2" data-task-index="${index}"><textarea class="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" rows="3" required placeholder="Tulis jawaban Anda di sini..."></textarea><button type="submit" class="mt-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Kirim Jawaban</button></form>`}</div>`).join('')}`;
+            } else {
+                 contentHTML = `<p>Selamat! Anda lolos seleksi administrasi. Mohon tunggu admin memberikan tugas seleksi.</p>`;
+            }
+        } else if (stage === STAGES[2]) {
+            contentHTML = currentUserData.hasReRegistered 
+                ? `<div class="text-center p-4 bg-green-100 rounded-lg"><i class="fas fa-check-circle text-green-500 mr-2"></i><span class="font-semibold text-green-800">Anda sudah melakukan Daftar Ulang.</span><p class="text-sm text-green-700">Mohon tunggu admin memproses data Anda.</p></div>`
+                : `<p>Selamat! Anda lolos tahap seleksi. Silakan lakukan daftar ulang.</p><button id="reregister-btn" class="mt-4 bg-green-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-700 transition duration-300 flex items-center gap-2"><i class="fas fa-check"></i>Konfirmasi Daftar Ulang</button>`;
+        } else if (stage === STAGES[3]) {
+            contentHTML = `<p>Terima kasih telah melakukan daftar ulang. Berikut adalah Nomor ID Siswa (NIS) Anda:</p><div class="my-4 p-4 bg-blue-100 text-blue-800 font-mono text-xl text-center rounded-lg shadow-inner">${currentUserData.studentIdNumber}</div><p>Harap simpan nomor ini baik-baik.</p>`;
+        } else if (stage === STAGES[4]) {
+            contentHTML = currentUserData.krsLink ? `<p>Kartu Rencana Studi (KRS) Anda sudah tersedia.</p><a href="${currentUserData.krsLink}" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition duration-300"><i class="fas fa-download"></i>Dapatkan KRS</a>` : `<p>KRS Anda sedang dipersiapkan oleh admin.</p>`;
+        } else if (stage === STAGES[5]) {
+            contentHTML = currentUserData.classLink ? `<p>Selamat! Anda telah ditempatkan di kelas.</p><a href="${currentUserData.classLink}" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition duration-300"><i class="fab fa-whatsapp"></i>Gabung Kelas</a>` : `<p>Proses penempatan kelas sedang berlangsung.</p>`;
+        } else if (stage === STAGES[6]) {
+            contentHTML = `<p class="text-lg font-semibold">Selamat datang di Cendekia Aksara!</p>`;
+             if(currentUserData.orientationTasks && currentUserData.orientationTasks.length > 0){
+                contentHTML += `<p class="mt-4">Berikut adalah tugas untuk Pekan Orientasi:</p><div class="mt-4 space-y-4">${currentUserData.orientationTasks.map(task => `<div class="p-4 border rounded-lg bg-gray-50"><h4 class="font-bold text-gray-800">${task.title}</h4><p class="text-sm text-gray-600 mt-1">${task.description}</p></div>`).join('')}</div>`;
+            } else {
+                contentHTML += `<p class="mt-4">Jadwal pekan orientasi akan segera diumumkan. Sampai jumpa di kelas!</p>`;
+            }
+        }
+        container.innerHTML = title + contentHTML;
+
+        document.getElementById('reregister-btn')?.addEventListener('click', handleReregistration);
+        document.querySelectorAll('.submit-task-form').forEach(form => form.addEventListener('submit', handleTaskSubmission));
+        document.getElementById('recovery-btn')?.addEventListener('click', handleRecovery);
+    }
+    
+    async function handleRecovery() {
+        const btn = document.getElementById('recovery-btn');
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
+
+        const userDocRef = doc(db, 'users', currentUserData.uid);
+        await updateDoc(userDocRef, { currentStage: STAGES[0], isRejected: false, rejectionReason: null, selectionTasks: [], hasReRegistered: false, studentIdNumber: null, krsLink: null, classLink: null, orientationTasks: [] });
+        showNotification('Akun Anda telah dipulihkan. Anda bisa mendaftar lagi saat pendaftaran dibuka.', 'success');
+    }
+
+    async function handleReregistration() {
+        const btn = document.getElementById('reregister-btn');
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
+        
+        const nis = `CA-${new Date().getFullYear()}-${currentUserData.uid.substring(0, 4).toUpperCase()}`;
+        const userDocRef = doc(db, 'users', currentUserData.uid);
+        await updateDoc(userDocRef, { hasReRegistered: true, currentStage: STAGES[3], studentIdNumber: nis });
+        showNotification('Konfirmasi Daftar Ulang berhasil!', 'success');
+    }
+
+    async function handleTaskSubmission(e) {
+        e.preventDefault();
+        const form = e.target;
+        const button = form.querySelector('button');
+        button.disabled = true;
+        button.textContent = 'Mengirim...';
+
+        const taskIndex = form.dataset.taskIndex;
+        const answer = form.querySelector('textarea').value;
+        let updatedTasks = [...(currentUserData.selectionTasks || [])];
+        updatedTasks[taskIndex].answer = answer;
+
+        const userDocRef = doc(db, 'users', currentUserData.uid);
+        await updateDoc(userDocRef, { selectionTasks: updatedTasks });
+        showNotification('Jawaban berhasil dikirim!', 'success');
+    }
+
+    // --- FUNGSI RENDER VIEW ADMIN ---
+    function renderAdminView() {
+        updateView('admin-view');
+        if (unsubscribeApplicants) unsubscribeApplicants();
+        
+        const q = query(collection(db, "users"), where("role", "==", "siswa"));
+        unsubscribeApplicants = onSnapshot(q, (snapshot) => {
+            const applicants = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            if (document.getElementById('admin-view').classList.contains('active-view')) {
+                renderAdminDashboardCards(applicants);
+                const currentFilter = document.querySelector('.dashboard-card.bg-blue-200')?.dataset.stage || STAGES[0];
+                renderAdminTable(applicants, currentFilter);
+            }
+        }, error => {
+            console.error("Error listening to applicants:", error);
+            showNotification("Gagal memuat data pendaftar.", "error");
+        });
+    }
+
+    async function renderAdminConsole() {
+        const q = query(collection(db, "users"), where("role", "==", "siswa"), where("isRejected", "==", false));
+        const querySnapshot = await getDocs(q);
+        const applicantCount = querySnapshot.size;
+        updateAdminConsole(applicantCount);
+    }
+
+    function updateAdminConsole(applicantCount) {
+        const { isOpen, maxApplicants, deadline } = registrationSettings;
+        const statusText = document.getElementById('console-reg-status-text');
+        const quotaText = document.getElementById('console-reg-quota-text');
+        const toggleBtn = document.getElementById('console-toggle-registration-btn');
+        const deadlineInput = document.getElementById('console-deadline-input');
+
+        const isPastDeadline = deadline && new Date() > deadline.toDate();
+        const effectiveStatus = isOpen && !isPastDeadline;
+
+        statusText.textContent = effectiveStatus ? 'Dibuka' : 'Ditutup';
+        statusText.className = `text-2xl font-bold ${effectiveStatus ? 'text-green-600' : 'text-red-600'}`;
+        quotaText.textContent = `${applicantCount} / ${maxApplicants}`;
+
+        toggleBtn.textContent = effectiveStatus ? 'Tutup Pendaftaran Sekarang' : 'Buka Pendaftaran Sekarang';
+        toggleBtn.className = `w-full text-white px-4 py-3 rounded-lg font-semibold transition duration-300 ${effectiveStatus ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`;
+        
+        if(deadline) {
+            const d = deadline.toDate();
+            const localISOString = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+            deadlineInput.value = localISOString;
+        }
+    }
+    
+    document.getElementById('console-toggle-registration-btn').addEventListener('click', async () => {
+        const settingsDocRef = doc(db, 'config', 'settings');
+        await updateDoc(settingsDocRef, { isOpen: !registrationSettings.isOpen });
+        showNotification('Status pendaftaran berhasil diubah.', 'success');
+    });
+
+    document.getElementById('console-save-deadline-btn').addEventListener('click', async () => {
+        const deadlineValue = document.getElementById('console-deadline-input').value;
+        if (deadlineValue) {
+            const deadlineDate = new Date(deadlineValue);
+            const settingsDocRef = doc(db, 'config', 'settings');
+            await updateDoc(settingsDocRef, { deadline: Timestamp.fromDate(deadlineDate) });
+            showNotification('Batas waktu pendaftaran berhasil disimpan.', 'success');
+        } else {
+            showNotification('Silakan pilih tanggal dan waktu.', 'error');
+        }
+    });
+
+
+    function renderAdminDashboardCards(applicants = []) {
+        const container = document.getElementById('admin-dashboard-cards');
+        const currentFilter = document.querySelector('.dashboard-card.bg-blue-200')?.dataset.stage || STAGES[0];
+
+        container.innerHTML = STAGES.map(stage => {
+            const count = applicants.filter(a => a.currentStage === stage && !a.isRejected).length;
+            const isActive = stage === currentFilter;
+            return `
+                <div class="dashboard-card p-4 rounded-xl shadow-md cursor-pointer transition duration-300 ${isActive ? 'bg-blue-200' : 'bg-white'}" data-stage="${stage}">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-blue-100 p-2 rounded-lg"><i class="fas ${STAGE_ICONS[STAGES.indexOf(stage)]} text-blue-600"></i></div>
+                        <div>
+                            <p class="text-gray-500 text-sm font-semibold">${stage}</p>
+                            <p class="text-2xl font-bold">${count}</p>
+                        </div>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+    
+    function renderAdminTable(allApplicants, stageFilter) {
+        const container = document.getElementById('admin-table-container');
+        document.querySelectorAll('.dashboard-card').forEach(c => c.classList.remove('bg-blue-200', 'bg-white'));
+        document.querySelectorAll('.dashboard-card').forEach(c => c.classList.add(c.dataset.stage === stageFilter ? 'bg-blue-200' : 'bg-white'));
+        
+        const applicants = allApplicants.filter(a => a.currentStage === stageFilter);
+
+        let tableHTML = `
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Daftar Siswa - Tahap: ${stageFilter}</h3>
+                ${(stageFilter === 'Daftar Ulang' || stageFilter === 'Dapat Nomor ID') ? `<button class="export-btn bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2" data-stage="${stageFilter}"><i class="fas fa-file-csv"></i>Ekspor ke CSV</button>` : ''}
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama & Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Daftar</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="applicant-table-body" class="bg-white divide-y divide-gray-200">
+                        ${applicants.length > 0 ? applicants.sort((a,b) => (b.createdAt?.toDate()||0) - (a.createdAt?.toDate()||0)).map(applicant => `
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">${applicant.name}</div>
+                                    <div class="text-sm text-gray-500">${applicant.email}</div>
+                                    ${applicant.isRejected ? '<span class="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Ditolak</span>' : ''}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${applicant.createdAt && typeof applicant.createdAt.toDate === 'function' ? applicant.createdAt.toDate().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium"><button class="text-indigo-600 hover:text-indigo-900 manage-btn" data-id="${applicant.id}"><i class="fas fa-edit mr-2"></i>Kelola</button></td>
+                            </tr>
+                        `).join('') : `<tr><td colspan="3" class="text-center py-10 text-gray-500">Tidak ada siswa di tahap ini.</td></tr>`}
+                    </tbody>
+                </table>
+            </div>`;
+        
+        container.innerHTML = tableHTML;
+    }
+    
+    // --- EVENT LISTENERS ADMIN ---
+    document.getElementById('admin-view').addEventListener('click', async e => {
+        const card = e.target.closest('.dashboard-card');
+        if (card) {
+            const stage = card.dataset.stage;
+            const q = query(collection(db, "users"), where("role", "==", "siswa"));
+            const snapshot = await getDocs(q);
+            const allApplicants = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderAdminTable(allApplicants, stage);
+        }
+
+        const manageBtn = e.target.closest('.manage-btn');
+        if (manageBtn) {
+            const applicantId = manageBtn.dataset.id;
+            const applicantDoc = await getDoc(doc(db, 'users', applicantId));
+            renderAdminModal(applicantDoc.data(), applicantId);
+        }
+        
+        const exportBtn = e.target.closest('.export-btn');
+        if(exportBtn) {
+             const stage = exportBtn.dataset.stage;
+             const q = query(collection(db, "users"), where('role', '==', 'siswa'), where('currentStage', '==', stage), where('isRejected', '==', false));
+             const querySnapshot = await getDocs(q);
+             const data = querySnapshot.docs.map(doc => doc.data());
+             exportToCSV(data, stage);
+        }
+    });
+    
+    function renderAdminModal(data, id) {
+        const modal = document.getElementById('admin-modal');
+        const container = document.getElementById('modal-content-container');
+        
+        let contentHTML = `
+            <div class="p-6">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="text-xl font-bold">${data.name}</h3>
+                        <p class="text-sm text-gray-500">${data.email}</p>
+                    </div>
+                    <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600" aria-label="Tutup modal"><i class="fas fa-times text-2xl"></i></button>
+                </div>
+                <div class="mt-4 border-t pt-4">
+                    <p class="font-semibold mb-1">Motivasi:</p>
+                    <p class="text-gray-700 bg-gray-50 p-3 rounded-md border">${data.motivation || 'N/A'}</p>
+                </div>
+                
+                <div class="mt-4 border-t pt-4">
+                    <label for="stage-selector" class="block font-semibold mb-2">Ubah Status Pendaftaran:</label>
+                    <select id="stage-selector" class="w-full p-2 border rounded-lg bg-white">
+                        ${STAGES.map(s => `<option value="${s}" ${data.currentStage === s ? 'selected' : ''}>${s}</option>`).join('')}
+                    </select>
+                </div>`;
+        
+        if (data.currentStage === 'Seleksi') {
+            contentHTML += `
+                <div class="mt-4 border-t pt-4">
+                    <label class="block font-semibold mb-2">Jawaban Tugas Seleksi:</label>
+                    ${data.selectionTasks && data.selectionTasks.length > 0 ? data.selectionTasks.map(t => `<div class="p-3 bg-gray-100 rounded mb-2 border"><strong>Q: ${t.question}</strong><br><em class="text-gray-700">A: ${t.answer || 'Belum dijawab'}</em></div>`).join('') : '<p class="text-gray-500">Belum ada tugas yang diberikan.</p>'}
+                    
+                    <div class="mt-3 flex gap-2">
+                        <input id="new-task-input" type="text" placeholder="Ketik pertanyaan seleksi baru..." class="w-full p-2 border rounded-lg">
+                        <button id="add-task-btn" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">Tambah</button>
+                    </div>
+                </div>
+                <div class="mt-4 border-t pt-4 bg-red-50 p-4 rounded-lg">
+                    <label for="rejection-reason" class="block font-semibold mb-2 text-red-800">Tolak Pendaftaran (Opsional):</label>
+                    <textarea id="rejection-reason" class="w-full p-2 border rounded-lg" placeholder="Tulis alasan penolakan di sini..."></textarea>
+                    <button id="reject-btn" class="mt-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center gap-2"><i class="fas fa-times-circle"></i>Tolak Pendaftar</button>
+                </div>`;
+        }
+        
+        if (data.currentStage === 'Kartu Rencana Studi') {
+             contentHTML += `<div class="mt-4 border-t pt-4"><label for="krs-link-input" class="block font-semibold mb-2">Link KRS:</label><input id="krs-link-input" type="url" class="w-full p-2 border rounded-lg" value="${data.krsLink || ''}" placeholder="https://docs.google.com/..."></div>`;
+        }
+        if (data.currentStage === 'Seleksi Kelas') {
+             contentHTML += `<div class="mt-4 border-t pt-4"><label for="class-link-input" class="block font-semibold mb-2">Link Grup Kelas:</label><input id="class-link-input" type="url" class="w-full p-2 border rounded-lg" value="${data.classLink || ''}" placeholder="https://chat.whatsapp.com/..."></div>`;
+        }
+         if (data.currentStage === 'Pekan Orientasi') {
+             contentHTML += `
+                <div class="mt-4 border-t pt-4">
+                    <label class="block font-semibold mb-2">Tugas Orientasi:</label>
+                    <div id="orientation-task-list" class="space-y-2 mb-3">
+                        ${(data.orientationTasks || []).map(t => `<div class="p-2 bg-gray-100 rounded border"><strong>${t.title}</strong>: ${t.description}</div>`).join('') || '<p class="text-gray-500">Belum ada tugas orientasi.</p>'}
+                    </div>
+                    <input id="orientation-title" type="text" placeholder="Judul Tugas" class="w-full p-2 border rounded-lg mb-2">
+                    <textarea id="orientation-desc" placeholder="Deskripsi singkat tugas" class="w-full p-2 border rounded-lg"></textarea>
+                    <button id="add-orientation-task-btn" class="mt-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">Tambah Tugas</button>
+                </div>`;
+        }
+
+        contentHTML += `
+                <div class="mt-6 text-right border-t pt-4">
+                    <button id="save-changes-btn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"><i class="fas fa-save"></i>Simpan Perubahan</button>
+                </div>
+            </div>`;
+
+        container.innerHTML = contentHTML;
+        modal.classList.remove('hidden');
+
+        document.getElementById('close-modal-btn').addEventListener('click', () => modal.classList.add('hidden'));
+        document.getElementById('save-changes-btn').addEventListener('click', () => saveAdminChanges(id));
+        
+        const rejectBtn = document.getElementById('reject-btn');
+        if(rejectBtn) rejectBtn.addEventListener('click', () => rejectApplicant(id));
+        
+        const addTaskBtn = document.getElementById('add-task-btn');
+        if(addTaskBtn) addTaskBtn.addEventListener('click', () => addSelectionTask(id, data));
+        
+        const addOrientationTaskBtn = document.getElementById('add-orientation-task-btn');
+        if(addOrientationTaskBtn) addOrientationTaskBtn.addEventListener('click', () => addOrientationTask(id, data));
+    }
+    
+    async function saveAdminChanges(id) {
+        const newStage = document.getElementById('stage-selector').value;
+        const krsLink = document.getElementById('krs-link-input')?.value;
+        const classLink = document.getElementById('class-link-input')?.value;
+        
+        let updates = { currentStage: newStage, isRejected: false, rejectionReason: null };
+        if (krsLink !== undefined) updates.krsLink = krsLink || null;
+        if (classLink !== undefined) updates.classLink = classLink || null;
+        
+        await updateDoc(doc(db, 'users', id), updates);
+        showNotification('Perubahan berhasil disimpan!', 'success');
+        document.getElementById('admin-modal').classList.add('hidden');
+    }
+    
+    async function rejectApplicant(id) {
+        const reason = document.getElementById('rejection-reason').value;
+        if (!reason) { showNotification('Silakan isi alasan penolakan.', 'error'); return; }
+        await updateDoc(doc(db, 'users', id), { isRejected: true, rejectionReason: reason });
+        showNotification('Pendaftar telah ditolak.', 'info');
+        document.getElementById('admin-modal').classList.add('hidden');
+    }
+
+    async function addSelectionTask(id, data) {
+        const input = document.getElementById('new-task-input');
+        const question = input.value;
+        if (!question) return;
+        const newTask = { question, answer: null };
+        const updatedTasks = [...(data.selectionTasks || []), newTask];
+        await updateDoc(doc(db, 'users', id), { selectionTasks: updatedTasks });
+        const applicantDoc = await getDoc(doc(db, 'users', id));
+        renderAdminModal(applicantDoc.data(), id);
+        showNotification('Tugas seleksi berhasil ditambahkan.', 'success');
+    }
+    
+    async function addOrientationTask(id, data) {
+        const titleInput = document.getElementById('orientation-title');
+        const descInput = document.getElementById('orientation-desc');
+        const title = titleInput.value;
+        const description = descInput.value;
+        if (!title || !description) { showNotification('Judul dan deskripsi tugas harus diisi.', 'error'); return; }
+        const newTask = { title, description };
+        const updatedTasks = [...(data.orientationTasks || []), newTask];
+        await updateDoc(doc(db, 'users', id), { orientationTasks: updatedTasks });
+        const applicantDoc = await getDoc(doc(db, 'users', id));
+        renderAdminModal(applicantDoc.data(), id);
+        showNotification('Tugas orientasi berhasil ditambahkan.', 'success');
+    }
+
+    function exportToCSV(data, stage) {
+        if (data.length === 0) {
+            showNotification('Tidak ada data untuk diekspor.', 'info');
+            return;
+        }
+        let csvContent = "data:text/csv;charset=utf-8,";
+        let headers = ["Nama Lengkap", "Email"];
+        if(stage === 'Dapat Nomor ID') headers.push("Nomor ID Siswa");
+        
+        csvContent += headers.join(",") + "\r\n";
+        
+        data.forEach(item => {
+            let row = [`"${item.name}"`, `"${item.email}"`];
+            if(stage === 'Dapat Nomor ID') row.push(`"${item.studentIdNumber || 'N/A'}"`);
+            csvContent += row.join(",") + "\r\n";
+        });
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `export_${stage.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showNotification('Data sedang diunduh...', 'success');
+    }
+
+</script>
+</body>
+</html>
+
