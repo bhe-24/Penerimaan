@@ -29,6 +29,29 @@
         .toast i { margin-right: 0.75rem; font-size: 1.25rem; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+        
+        /* Loading spinner for button */
+        .spinner { 
+            display: inline-block; 
+            width: 16px; 
+            height: 16px; 
+            border: 2px solid rgba(255,255,255,0.3); 
+            border-radius: 50%; 
+            border-top-color: white; 
+            animation: spin 1s ease-in-out infinite; 
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Animation for status change */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .status-pulse {
+            animation: pulse 0.6s ease-in-out;
+        }
+        
     </style>
 </head>
 <body class="antialiased text-gray-800">
@@ -84,7 +107,37 @@
                             <div class="mb-4"><label for="register-name" class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label><input type="text" id="register-name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg"></div>
                             <div class="mb-4"><label for="register-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" id="register-email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg"></div>
                             <div class="mb-4"><label for="register-password" class="block text-sm font-medium text-gray-700 mb-1">Password (min. 6 karakter)</label><input type="password" id="register-password" required minlength="6" class="w-full px-4 py-2 border border-gray-300 rounded-lg"></div>
-                            <div class="mb-6"><label for="register-motivation" class="block text-sm font-medium text-gray-700 mb-1">Motivasi Bergabung</label><textarea id="register-motivation" rows="3" required class="w-full px-4 py-2 border border-gray-300 rounded-lg"></textarea></div>
+                            <div class="mb-4"><label for="register-phone" class="block text-sm font-medium text-gray-700 mb-1">Nomor Telepon</label><input type="tel" id="register-phone" required class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="08123456789"></div>
+                            <div class="mb-4"><label for="register-age" class="block text-sm font-medium text-gray-700 mb-1">Umur</label><input type="number" id="register-age" required min="15" max="100" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Contoh: 20"></div>
+                            <div class="mb-4"><label for="register-motivation" class="block text-sm font-medium text-gray-700 mb-1">Motivasi Bergabung</label><textarea id="register-motivation" rows="3" required class="w-full px-4 py-2 border border-gray-300 rounded-lg"></textarea></div>
+                            <div class="mb-4">
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="submit-additional-form" class="mr-2">
+                                    <label for="submit-additional-form" class="text-sm font-medium text-gray-700">Saya ingin mengirimkan formulir tambahan</label>
+                                </div>
+                            </div>
+                            <div id="additional-form-container" class="hidden mb-4 p-4 bg-gray-50 rounded-lg">
+                                <h3 class="text-lg font-semibold mb-3">Formulir Tambahan</h3>
+                                <div class="mb-3">
+                                    <label for="additional-form-education" class="block text-sm font-medium text-gray-700 mb-1">Pendidikan Terakhir</label>
+                                    <select id="additional-form-education" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                        <option value="">Pilih Pendidikan</option>
+                                        <option value="SMA/SMK">SMA/SMK</option>
+                                        <option value="D3">D3</option>
+                                        <option value="S1">S1</option>
+                                        <option value="S2">S2</option>
+                                        <option value="Lainnya">Lainnya</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="additional-form-experience" class="block text-sm font-medium text-gray-700 mb-1">Pengalaman (jika ada)</label>
+                                    <textarea id="additional-form-experience" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg"></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="additional-form-interest" class="block text-sm font-medium text-gray-700 mb-1">Minat/Kompetensi</label>
+                                    <input type="text" id="additional-form-interest" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                </div>
+                            </div>
                             <button type="submit" class="w-full bg-[#005a9c] text-white py-2 rounded-lg font-semibold hover:bg-[#004b80] transition duration-300 flex items-center justify-center disabled:opacity-75">
                                 <i class="fas fa-spinner fa-spin mr-2 hidden"></i>
                                 <span class="button-text">Daftar</span>
@@ -108,6 +161,9 @@
                 <div class="flex flex-wrap justify-between items-start mb-6 gap-4">
                     <h2 class="text-3xl font-bold">Dasbor Siswa</h2>
                     <div class="flex flex-wrap gap-2">
+                        <button id="view-forms-btn" class="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition duration-300 flex items-center gap-2 text-sm">
+                            <i class="fas fa-file-alt"></i> Lihat Formulir Tambahan
+                        </button>
                         <button id="open-archive-btn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition duration-300 flex items-center gap-2 text-sm">
                             <i class="fas fa-archive"></i> Buka Arsip Siswa
                         </button>
@@ -118,6 +174,21 @@
                 </div>
                 <div id="admin-dashboard-cards" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8"></div>
                 <div id="admin-table-container" class="bg-white p-6 rounded-xl shadow-lg"></div>
+            </div>
+
+            <!-- Admin Forms View -->
+            <div id="admin-forms-view" class="view">
+                <div class="max-w-6xl mx-auto">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold">Formulir Tambahan Siswa</h2>
+                        <button id="back-to-dashboard-from-forms-btn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-semibold hover:bg-gray-300 transition duration-300 flex items-center gap-2">
+                            <i class="fas fa-arrow-left"></i> Kembali ke Dasbor
+                        </button>
+                    </div>
+                    <div id="forms-table-container" class="bg-white p-6 rounded-xl shadow-lg">
+                        <!-- Tabel formulir akan dirender di sini oleh JavaScript -->
+                    </div>
+                </div>
             </div>
 
             <!-- Admin Console View -->
@@ -140,7 +211,10 @@
                                 <p id="console-reg-quota-text" class="text-2xl font-bold"></p>
                             </div>
                             <div>
-                                 <button id="console-toggle-registration-btn" class="w-full text-white px-4 py-3 rounded-lg font-semibold transition duration-300"></button>
+                                 <button id="console-toggle-registration-btn" class="w-full text-white px-4 py-3 rounded-lg font-semibold transition duration-300 flex items-center justify-center">
+                                    <span id="toggle-btn-text">Buka/Tutup</span>
+                                    <span id="toggle-btn-spinner" class="spinner ml-2 hidden"></span>
+                                </button>
                             </div>
                         </div>
                          <div class="mt-4 border-t pt-4">
@@ -150,6 +224,21 @@
                                 <button id="console-save-deadline-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Simpan</button>
                             </div>
                         </div>
+
+                        <!-- BARU: Bagian Manajemen Siklus -->
+                        <div class="mt-6 border-t pt-6">
+                            <h3 class="text-lg font-semibold text-gray-800">Manajemen Siklus Pendaftaran</h3>
+                            <p class="text-sm text-gray-600 mt-1">
+                                Klik tombol ini untuk mengarsipkan semua siswa yang telah menyelesaikan "Pekan Orientasi". 
+                                Ini akan membersihkan dasbor admin dan mempersiapkan sistem untuk periode pendaftaran baru.
+                            </p>
+                            <button id="archive-all-btn" class="mt-4 w-full bg-indigo-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition duration-300 flex items-center justify-center">
+                                <span id="archive-btn-text">Arsipkan Siswa Lulus & Mulai Siklus Baru</span>
+                                <span id="archive-btn-spinner" class="spinner ml-2 hidden"></span>
+                            </button>
+                        </div>
+                        <!-- AKHIR: Bagian Manajemen Siklus -->
+
                     </div>
                 </div>
             </div>
@@ -188,9 +277,10 @@
     </div>
 
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, where, query, serverTimestamp, getDocs, Timestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+    // Diperbarui ke Firebase 11.6.1 (v9 compat)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, where, query, serverTimestamp, getDocs, Timestamp, addDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     const firebaseConfig = { apiKey: "AIzaSyDpUWUIzPXIZN6rrNtsIqcL6VfOE2RLVl0", authDomain: "mading-cf676.firebaseapp.com", projectId: "mading-cf676", storageBucket: "mading-cf676.appspot.com", messagingSenderId: "72175203671", appId: "1:72175203671:web:7a0676a55beb64bc96ba12" };
     
@@ -201,11 +291,12 @@
     let currentUserData = null;
     let unsubscribeUser = null;
     let unsubscribeApplicants = null;
-    let unsubscribeSettings = null; 
+    let unsubscribeSettings = null; // Listener untuk settings
+    let unsubscribeForms = null;
     let registrationSettings = { isOpen: false, maxApplicants: 50, deadline: null }; 
 
-    const STAGES = ["Pendaftaran Awal", "Seleksi", "Daftar Ulang", "Dapat Nomor ID", "Kartu Rencana Studi", "Seleksi Kelas", "Pekan Orientasi"];
-    const STAGE_ICONS = ["fa-user-plus", "fa-clipboard-check", "fa-id-card-alt", "fa-hashtag", "fa-book-reader", "fa-chalkboard-teacher", "fa-rocket"];
+    const STAGES = ["Pendaftaran Awal", "Seleksi", "Daftar Ulang", "Dapat Nomor ID", "Seleksi Kelas", "Pekan Orientasi"];
+    const STAGE_ICONS = ["fa-user-plus", "fa-clipboard-check", "fa-id-card-alt", "fa-hashtag", "fa-chalkboard-teacher", "fa-rocket"];
 
     const updateView = (viewId) => {
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active-view'));
@@ -233,38 +324,53 @@
     
     document.getElementById('show-register').addEventListener('click', async (e) => {
         e.preventDefault();
-        const deadline = registrationSettings.deadline?.toDate();
-        const isPastDeadline = deadline && new Date() > deadline;
-        const isManuallyOpen = registrationSettings.isOpen;
-        const q = query(collection(db, "users"), where("role", "==", "siswa"), where("isRejected", "==", false));
-        const querySnapshot = await getDocs(q);
-        const applicantCount = querySnapshot.size;
-        const isQuotaFull = applicantCount >= registrationSettings.maxApplicants;
-        const isRegistrationEffectivelyOpen = isManuallyOpen && !isQuotaFull && !isPastDeadline;
-
-        if (isRegistrationEffectivelyOpen) {
-            document.getElementById('login-container').classList.add('hidden');
-            document.getElementById('register-container').classList.remove('hidden');
-        } else {
-            showNotification('Mohon maaf, pendaftaran saat ini ditutup.', 'error');
-        }
+        // Force refresh settings before checking
+        await refreshRegistrationSettings();
+        checkRegistrationAvailability();
     });
-    document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('register-container').classList.add('hidden'); document.getElementById('login-container').classList.remove('hidden'); });
+    
+    document.getElementById('show-login').addEventListener('click', (e) => { 
+        e.preventDefault(); 
+        document.getElementById('register-container').classList.add('hidden'); 
+        document.getElementById('login-container').classList.remove('hidden'); 
+    });
+    
     document.getElementById('universal-logout-btn').addEventListener('click', () => {
         signOut(auth);
         showNotification("Anda telah berhasil logout.", "info");
     });
+    
     // [FIX] Memanggil updateAdminConsole saat tombol diklik
     document.getElementById('open-console-btn').addEventListener('click', () => {
         updateView('admin-console-view');
         updateAdminConsole(); 
     });
+    
     document.getElementById('back-to-dashboard-btn').addEventListener('click', () => updateView('admin-view'));
+    
+    document.getElementById('view-forms-btn').addEventListener('click', () => {
+        updateView('admin-forms-view');
+        renderFormsView();
+    });
+    
+    document.getElementById('back-to-dashboard-from-forms-btn').addEventListener('click', () => updateView('admin-view'));
+    
     document.getElementById('open-archive-btn').addEventListener('click', () => {
         updateView('admin-archive-view');
         renderArchiveView();
     });
+    
     document.getElementById('back-to-dashboard-from-archive-btn').addEventListener('click', () => updateView('admin-view'));
+
+    // Toggle additional form visibility
+    document.getElementById('submit-additional-form').addEventListener('change', (e) => {
+        const additionalFormContainer = document.getElementById('additional-form-container');
+        if (e.target.checked) {
+            additionalFormContainer.classList.remove('hidden');
+        } else {
+            additionalFormContainer.classList.add('hidden');
+        }
+    });
 
     document.getElementById('login-form').addEventListener('submit', (e) => {
         e.preventDefault();
@@ -292,21 +398,68 @@
         const name = document.getElementById('register-name').value;
         const email = document.getElementById('register-email').value;
         const password = document.getElementById('register-password').value;
+        const phone = document.getElementById('register-phone').value;
+        const age = document.getElementById('register-age').value;
         const motivation = document.getElementById('register-motivation').value;
+        
+        // Check if additional form is submitted
+        const submitAdditionalForm = document.getElementById('submit-additional-form').checked;
+        let additionalFormData = null;
+        
+        if (submitAdditionalForm) {
+            additionalFormData = {
+                education: document.getElementById('additional-form-education').value,
+                experience: document.getElementById('additional-form-experience').value,
+                interest: document.getElementById('additional-form-interest').value
+            };
+        }
 
         createUserWithEmailAndPassword(auth, email, password)
             .then(cred => {
                 const userRole = email.toLowerCase().endsWith('@ac.id') ? 'admin' : 'siswa';
                 const initialStage = userRole === 'admin' ? null : STAGES[0];
                 
-                const newUser = { name, email, motivation, role: userRole, currentStage: initialStage, createdAt: serverTimestamp(), hasReRegistered: false, isRejected: false, rejectionReason: null, krsLink: null, classLink: null, orientationTasks: [], orientationAnswers: {} };
+                const newUser = { 
+                    name, 
+                    email, 
+                    phone,
+                    age: parseInt(age),
+                    motivation, 
+                    role: userRole, 
+                    currentStage: initialStage, 
+                    createdAt: serverTimestamp(), 
+                    hasReRegistered: false, 
+                    isRejected: false, 
+                    rejectionReason: null, 
+                    classLink: null, 
+                    orientationTasks: [], 
+                    orientationAnswers: {},
+                    hasAdditionalForm: submitAdditionalForm,
+                    isArchived: false // BARU: Tambahkan flag arsip
+                };
+                
                 const userDocRef = doc(db, 'users', cred.user.uid);
-                return setDoc(userDocRef, newUser);
+                return setDoc(userDocRef, newUser)
+                    .then(() => {
+                        // If additional form is submitted, save it to a separate collection
+                        if (submitAdditionalForm && additionalFormData) {
+                            return addDoc(collection(db, 'additionalForms'), {
+                                userId: cred.user.uid,
+                                userName: name,
+                                userEmail: email,
+                                userPhone: phone,
+                                userAge: parseInt(age),
+                                ...additionalFormData,
+                                submittedAt: serverTimestamp()
+                            });
+                        }
+                    });
             })
             .then(() => {
                 showNotification('Pendaftaran berhasil! Silakan login.', 'success');
                 document.getElementById('show-login').click();
                 form.reset();
+                document.getElementById('additional-form-container').classList.add('hidden');
             })
             .catch(err => {
                  let message = 'Pendaftaran Gagal: ' + err.message;
@@ -318,17 +471,27 @@
             .finally(() => showLoadingButton(form, false));
     });
 
-    async function updateRegistrationAvailability() {
+    // Function to refresh registration settings from database
+    async function refreshRegistrationSettings() {
+        const settingsDocRef = doc(db, 'config', 'settings');
+        const docSnap = await getDoc(settingsDocRef);
+        if (docSnap.exists()) {
+            registrationSettings = docSnap.data();
+        } else {
+            await setDoc(settingsDocRef, { isOpen: false, maxApplicants: 50, deadline: null });
+            registrationSettings = { isOpen: false, maxApplicants: 50, deadline: null };
+        }
+    }
+
+    // Function to check and update registration availability
+    async function checkRegistrationAvailability() {
         const deadline = registrationSettings.deadline?.toDate();
         const isPastDeadline = deadline && new Date() > deadline;
         const isManuallyOpen = registrationSettings.isOpen;
-
         const q = query(collection(db, "users"), where("role", "==", "siswa"), where("isRejected", "==", false));
         const querySnapshot = await getDocs(q);
         const applicantCount = querySnapshot.size;
-        
         const isQuotaFull = applicantCount >= registrationSettings.maxApplicants;
-        
         const isRegistrationEffectivelyOpen = isManuallyOpen && !isQuotaFull && !isPastDeadline;
 
         const regClosedContainer = document.getElementById('registration-closed-container');
@@ -337,6 +500,8 @@
 
         if (isRegistrationEffectivelyOpen) {
             regClosedContainer.classList.add('hidden');
+            registerContainer.classList.remove('hidden');
+            loginContainer.classList.add('hidden');
         } else {
             regClosedContainer.classList.remove('hidden');
             registerContainer.classList.add('hidden');
@@ -357,6 +522,7 @@
             if (expectedRole === 'siswa' && !data.currentStage) updates.currentStage = STAGES[0];
             if (!data.createdAt) updates.createdAt = serverTimestamp();
             if(!data.orientationAnswers) updates.orientationAnswers = {};
+            if (data.isArchived === undefined) updates.isArchived = false; // BARU: Pastikan flag arsip ada
             
             if (Object.keys(updates).length > 0) {
                 await setDoc(userRef, updates, { merge: true });
@@ -366,34 +532,28 @@
         } else {
             const expectedRole = user.email.toLowerCase().endsWith('@ac.id') ? 'admin' : 'siswa';
             const initialStage = expectedRole === 'siswa' ? null : STAGES[0];
-            const newUserProfile = { email: user.email, name: user.displayName || "Pengguna Baru", role: expectedRole, currentStage: initialStage, createdAt: serverTimestamp(), orientationAnswers: {} };
+            const newUserProfile = { 
+                email: user.email, 
+                name: user.displayName || "Pengguna Baru", 
+                role: expectedRole, 
+                currentStage: initialStage, 
+                createdAt: serverTimestamp(), 
+                orientationAnswers: {},
+                hasAdditionalForm: false,
+                isArchived: false // BARU: Pastikan flag arsip ada
+            };
             await setDoc(userRef, newUserProfile);
             return { uid: user.uid, ...newUserProfile };
         }
     }
     
-    if (unsubscribeSettings) unsubscribeSettings();
-    const settingsDocRef = doc(db, 'config', 'settings');
-    unsubscribeSettings = onSnapshot(settingsDocRef, async (docSnap) => {
-        if (docSnap.exists()) {
-            registrationSettings = docSnap.data();
-        } else {
-            await setDoc(settingsDocRef, { isOpen: false, maxApplicants: 50, deadline: null });
-            registrationSettings = { isOpen: false, maxApplicants: 50, deadline: null };
-        }
-
-        if (!auth.currentUser) {
-            updateRegistrationAvailability();
-        }
-
-        if (document.getElementById('admin-console-view').classList.contains('active-view')) {
-            updateAdminConsole();
-        }
-    });
-
+    // Remove problematic onSnapshot and use direct reads
     onAuthStateChanged(auth, user => {
         if (unsubscribeUser) unsubscribeUser();
         if (unsubscribeApplicants) unsubscribeApplicants();
+        if (unsubscribeForms) unsubscribeForms();
+        if (unsubscribeSettings) unsubscribeSettings(); // <-- BERSIHKAN LISTENER SETTINGS
+        
         const logoutBtn = document.getElementById('universal-logout-btn');
         updateView('loading-view');
         
@@ -405,6 +565,27 @@
                 if (initialUserData.role === 'admin') {
                     currentUserData = initialUserData;
                     renderAdminView();
+
+                    // *** PERBAIKAN: Listener real-time untuk settings ***
+                    const settingsDocRef = doc(db, 'config', 'settings');
+                    unsubscribeSettings = onSnapshot(settingsDocRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            registrationSettings = docSnap.data();
+                        } else {
+                            // Doc tidak ada, buat default
+                            registrationSettings = { isOpen: false, maxApplicants: 50, deadline: null };
+                            setDoc(settingsDocRef, registrationSettings);
+                        }
+                        // Jika admin sedang melihat konsol, perbarui UI-nya
+                        if (document.getElementById('admin-console-view').classList.contains('active-view')) {
+                            updateAdminConsole();
+                        }
+                    }, error => {
+                        console.error("Error listening to settings:", error);
+                        showNotification("Gagal memuat setelan pendaftaran.", "error");
+                    });
+                    // *** AKHIR DARI PERBAIKAN ***
+
                 } else {
                     const userDocRef = doc(db, 'users', user.uid);
                     unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
@@ -423,7 +604,7 @@
             });
         } else {
             logoutBtn.classList.add('hidden');
-            updateRegistrationAvailability();
+            checkRegistrationAvailability();
             updateView('auth-view');
             currentUserData = null;
         }
@@ -431,8 +612,32 @@
 
     function renderStudentView() {
         if (!currentUserData) return;
-        renderStudentTimeline();
-        renderStudentContentByStage();
+
+        const timelineContainer = document.getElementById('student-timeline-container');
+        const contentContainer = document.getElementById('student-content-container');
+        const gridContainer = timelineContainer.parentElement; // Ambil parent grid
+
+        if (currentUserData.isArchived) {
+            // BARU: Siswa diarsipkan, tampilkan tampilan kelulusan
+            timelineContainer.innerHTML = ''; // Kosongkan timeline
+            timelineContainer.classList.add('hidden'); // Sembunyikan container timeline
+            
+            // PERBAIKAN UTAMA: Hapus class grid agar container konten bisa penuh
+            gridContainer.classList.remove('grid', 'grid-cols-1', 'md:grid-cols-3', 'gap-8');
+            contentContainer.classList.remove('md:col-span-2'); 
+
+            renderStudentGraduationView(); // Panggil fungsi baru untuk tampilan lulus
+        } else {
+            // Siswa masih aktif, tampilkan tampilan normal
+            timelineContainer.classList.remove('hidden'); // Tampilkan container timeline
+            
+            // PERBAIKAN UTAMA: Pastikan class grid ada untuk tampilan normal
+            gridContainer.classList.add('grid', 'grid-cols-1', 'md:grid-cols-3', 'gap-8');
+            contentContainer.classList.add('md:col-span-2'); 
+            
+            renderStudentTimeline();
+            renderStudentContentByStage();
+        }
         updateView('student-view');
     }
 
@@ -474,7 +679,7 @@
             contentHTML = currentUserData.hasReRegistered 
                 ? `<div class="text-center p-4 bg-green-100 rounded-lg"><i class="fas fa-check-circle text-green-500 mr-2"></i><span class="font-semibold text-green-800">Anda sudah melakukan Daftar Ulang.</span><p class="text-sm text-green-700">Mohon tunggu admin memproses data Anda.</p></div>`
                 : `<p>Selamat! Anda lolos tahap seleksi. Silakan lakukan daftar ulang.</p><button id="reregister-btn" class="mt-4 bg-green-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-700 flex items-center gap-2"><i class="fas fa-check"></i>Konfirmasi Daftar Ulang</button>`;
-        } else if (stage === STAGES[6]) {
+        } else if (stage === STAGES[5]) { // Diperbarui dari 6 ke 5 (Pekan Orientasi)
             title = `<h2 class="text-2xl font-bold mb-4">Tahap: ${stage}</h2>`;
             contentHTML = `<p class="text-lg font-semibold">Selamat datang di Cendekia Aksara!</p>`;
              if(currentUserData.orientationTasks && currentUserData.orientationTasks.length > 0){
@@ -486,9 +691,7 @@
             contentHTML = `<p>Terima kasih telah mendaftar di Cendekia Aksara. Data Anda sedang kami proses.</p>`;
         } else if (stage === STAGES[3]) {
             contentHTML = `<p>Terima kasih telah melakukan daftar ulang. Berikut adalah Nomor ID Siswa (NIS) Anda:</p><div class="my-4 p-4 bg-blue-100 text-blue-800 font-mono text-xl text-center rounded-lg shadow-inner">${currentUserData.studentIdNumber || 'Sedang Diproses'}</div><p>Harap simpan nomor ini baik-baik.</p>`;
-        } else if (stage === STAGES[4]) {
-            contentHTML = currentUserData.krsLink ? `<p>Kartu Rencana Studi (KRS) Anda sudah tersedia.</p><a href="${currentUserData.krsLink}" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700"><i class="fas fa-download"></i>Dapatkan KRS</a>` : `<p>KRS Anda sedang dipersiapkan oleh admin.</p>`;
-        } else if (stage === STAGES[5]) {
+        } else if (stage === STAGES[4]) { // Diperbarui dari 5 ke 4 (Seleksi Kelas)
             contentHTML = currentUserData.classLink ? `<p>Selamat! Anda telah ditempatkan di kelas.</p><a href="${currentUserData.classLink}" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700"><i class="fab fa-whatsapp"></i>Gabung Kelas</a>` : `<p>Proses penempatan kelas sedang berlangsung.</p>`;
         } else {
             contentHTML = `<p>Informasi untuk tahap ini akan segera tersedia. Mohon periksa kembali nanti.</p>`;
@@ -499,6 +702,58 @@
         document.querySelectorAll('.submit-task-form').forEach(form => form.addEventListener('submit', handleTaskSubmission));
         document.querySelectorAll('.submit-orientation-task-form').forEach(form => form.addEventListener('submit', handleOrientationTaskSubmission));
         document.getElementById('recovery-btn')?.addEventListener('click', handleRecovery);
+    }
+
+    // BARU: Fungsi untuk menampilkan halaman kelulusan siswa
+    function renderStudentGraduationView() {
+        const container = document.getElementById('student-content-container');
+        if (!container) return;
+
+        // 1. Ambil data yang diperlukan
+        const namaLengkap = currentUserData.name;
+        const kode = currentUserData.studentIdNumber || 'N/A';
+        
+        // 2. Format Angkatan (dari tanggal pendaftaran)
+        let angkatan = 'N/A';
+        if (currentUserData.createdAt && currentUserData.createdAt.toDate) {
+            const joinDate = currentUserData.createdAt.toDate();
+            angkatan = `${joinDate.toLocaleString('id-ID', { month: 'long' })} ${joinDate.getFullYear()}`;
+        }
+
+        // 3. Buat HTML untuk sertifikat digital
+        // (PERBAIKAN: Layout diubah agar mengisi container, bukan box 'max-w-lg')
+        // (PERBAIKAN: Teks diubah agar lebih akurat)
+        const contentHTML = `
+            <div class="text-center">
+                <i class="fas fa-graduation-cap text-6xl text-green-500 mb-4"></i>
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Selamat, ${namaLengkap}!</h2>
+                <p class="text-xl text-gray-600 mb-8">Anda telah resmi Lulus Seleksi dan diterima sebagai siswa baru di Cendekia Aksara.</p>
+                
+                <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200 max-w-xl mx-auto">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-6">Sertifikat Kelulusan (Digital)</h3>
+                    <div class="space-y-4 text-left">
+                        <div class="flex flex-col sm:flex-row sm:justify-between">
+                            <span class="text-gray-500 font-medium">Nama Lengkap:</span>
+                            <span class="text-gray-900 font-semibold text-right">${namaLengkap}</span>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:justify-between">
+                            <span class="text-gray-500 font-medium">Nomor ID Siswa:</span>
+                            <span class="text-gray-900 font-semibold font-mono text-right">${kode}</span>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:justify-between">
+                            <span class="text-gray-500 font-medium">Keterangan:</span>
+                            <span class="text-green-600 font-semibold text-right">LULUS SELEKSI</span>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:justify-between">
+                            <span class="text-gray-500 font-medium">Angkatan:</span>
+                            <span class="text-gray-900 font-semibold text-right">${angkatan}</span>
+                        </div>
+                    </div>
+                </div>
+                <p class="mt-8 text-gray-500 text-sm text-center">Akun Anda telah diarsipkan. <br>Terima kasih atas partisipasi Anda!</p>
+            </div>
+        `;
+        container.innerHTML = contentHTML;
     }
     
     async function handleOrientationTaskSubmission(e) {
@@ -517,7 +772,7 @@
         const btn = document.getElementById('recovery-btn');
         btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
         const userDocRef = doc(db, 'users', currentUserData.uid);
-        await updateDoc(userDocRef, { currentStage: STAGES[0], isRejected: false, rejectionReason: null, selectionTasks: [], hasReRegistered: false, studentIdNumber: null, krsLink: null, classLink: null, orientationTasks: [], orientationAnswers: {} });
+        await updateDoc(userDocRef, { currentStage: STAGES[0], isRejected: false, rejectionReason: null, selectionTasks: [], hasReRegistered: false, studentIdNumber: null, classLink: null, orientationTasks: [], orientationAnswers: {}, isArchived: false });
         showNotification('Akun Anda telah dipulihkan.', 'success');
     }
 
@@ -548,7 +803,9 @@
         updateView('admin-view');
         if (unsubscribeApplicants) unsubscribeApplicants();
         
-        const q = query(collection(db, "users"), where("role", "==", "siswa"));
+        // BARU: Query diubah untuk mengecualikan yang diarsipkan
+        const q = query(collection(db, "users"), where("role", "==", "siswa"), where("isArchived", "==", false));
+        
         unsubscribeApplicants = onSnapshot(q, (snapshot) => {
             const applicants = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             if (document.getElementById('admin-view').classList.contains('active-view')) {
@@ -562,8 +819,138 @@
         });
     }
 
+    async function renderFormsView() {
+        const container = document.getElementById('forms-table-container');
+        container.innerHTML = `<div class="text-center py-10"><i class="fas fa-spinner fa-spin text-3xl"></i></div>`;
+        
+        const q = query(collection(db, "additionalForms"));
+        const querySnapshot = await getDocs(q);
+        const forms = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        let tableHTML = `<div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold">Total Formulir: ${forms.length}</h3><button id="download-forms-pdf-btn" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center gap-2"><i class="fas fa-file-pdf"></i> Unduh PDF</button></div><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Telepon</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Umur</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pendidikan</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pengalaman</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Minat</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th><th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aksi</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">${forms.length > 0 ? forms.sort((a,b) => (b.submittedAt?.toDate()||0) - (a.submittedAt?.toDate()||0)).map(form => `<tr><td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${form.userName}</div></td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.userEmail}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.userPhone || '-'}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.userAge || '-'}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.education || '-'}</td><td class="px-6 py-4 text-sm text-gray-500">${form.experience || '-'}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.interest || '-'}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.submittedAt?.toDate().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) || 'N/A'}</td><td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium"><button class="text-indigo-600 hover:text-indigo-900 view-form-btn" data-id="${form.id}"><i class="fas fa-eye mr-2"></i>Lihat</button></td></tr>`).join('') : `<tr><td colspan="9" class="text-center py-10 text-gray-500">Tidak ada formulir tambahan.</td></tr>`}</tbody></table></div>`;
+        
+        container.innerHTML = tableHTML;
+        
+        document.getElementById('download-forms-pdf-btn').addEventListener('click', () => forms.length > 0 ? downloadFormsAsPDF(forms) : showNotification('Tidak ada data untuk diunduh.', 'info'));
+        
+        document.querySelectorAll('.view-form-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const formId = e.currentTarget.dataset.id;
+                const formDoc = await getDoc(doc(db, 'additionalForms', formId));
+                if (formDoc.exists()) {
+                    renderFormModal(formDoc.data(), formId);
+                }
+            });
+        });
+    }
+    
+    function renderFormModal(data, id) {
+        const modal = document.getElementById('admin-modal');
+        const container = document.getElementById('modal-content-container');
+        
+        const contentHTML = `
+            <div class="p-6">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="text-xl font-bold">Detail Formulir Tambahan</h3>
+                        <p class="text-sm text-gray-500">${data.userEmail}</p>
+                    </div>
+                    <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                <div class="mt-4 border-t pt-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <p class="font-semibold mb-1">Nama:</p>
+                            <p class="text-gray-700">${data.userName}</p>
+                        </div>
+                        <div>
+                            <p class="font-semibold mb-1">Email:</p>
+                            <p class="text-gray-700">${data.userEmail}</p>
+                        </div>
+                        <div>
+                            <p class="font-semibold mb-1">Nomor Telepon:</p>
+                            <p class="text-gray-700">${data.userPhone || '-'}</p>
+                        </div>
+                        <div>
+                            <p class="font-semibold mb-1">Umur:</p>
+                            <p class="text-gray-700">${data.userAge || '-'} tahun</p>
+                        </div>
+                        <div>
+                            <p class="font-semibold mb-1">Pendidikan Terakhir:</p>
+                            <p class="text-gray-700">${data.education || '-'}</p>
+                        </div>
+                        <div>
+                            <p class="font-semibold mb-1">Minat/Kompetensi:</p>
+                            <p class="text-gray-700">${data.interest || '-'}</p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <p class="font-semibold mb-1">Pengalaman:</p>
+                            <p class="text-gray-700 bg-gray-50 p-3 rounded-md border">${data.experience || '-'}</p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <p class="font-semibold mb-1">Tanggal Pengiriman:</p>
+                            <p class="text-gray-700">${data.submittedAt?.toDate().toLocaleString('id-ID') || 'N/A'}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6 text-right border-t pt-4">
+                    <button id="delete-form-btn" class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 flex items-center gap-2 ml-auto">
+                        <i class="fas fa-trash"></i>Hapus Formulir
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = contentHTML;
+        modal.classList.remove('hidden');
+        
+        document.getElementById('close-modal-btn').addEventListener('click', () => modal.classList.add('hidden'));
+        
+        document.getElementById('delete-form-btn').addEventListener('click', async () => {
+            // PERBAIKAN: Menghapus 'confirm()' yang tidak berfungsi di iframe
+            await deleteDoc(doc(db, 'additionalForms', id));
+            showNotification('Formulir berhasil dihapus.', 'success');
+            modal.classList.add('hidden');
+            renderFormsView();
+        });
+    }
+    
+    function downloadFormsAsPDF(forms) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.setFontSize(18);
+        doc.text("Formulir Tambahan - Cendekia Aksara", 14, 22);
+        const tableColumn = ["Nama", "Email", "Telepon", "Umur", "Pendidikan", "Pengalaman", "Minat", "Tanggal"];
+        const tableRows = [];
+        forms.forEach(form => {
+            const submittedDate = form.submittedAt?.toDate().toLocaleDateString('id-ID') || 'N/A';
+            tableRows.push([
+                form.userName, 
+                form.userEmail, 
+                form.userPhone || '-', 
+                form.userAge || '-', 
+                form.education || '-', 
+                form.experience || '-', 
+                form.interest || '-', 
+                submittedDate
+            ]);
+        });
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 30
+        });
+        doc.save(`formulir-tambahan_${new Date().toISOString().split('T')[0]}.pdf`);
+        showNotification('PDF sedang dibuat...', 'success');
+    }
+
+    // *** PERBAIKAN: Fungsi updateAdminConsole disederhanakan ***
+    // Fungsi ini sekarang hanya membaca dari state 'registrationSettings'
+    // dan tidak perlu mengambil data atau memicu refresh manual.
     async function updateAdminConsole() {
-        const q = query(collection(db, "users"), where("role", "==", "siswa"), where("isRejected", "==", false));
+        const q = query(collection(db, "users"), where("role", "==", "siswa"), where("isRejected", "==", false), where("isArchived", "==", false));
         const querySnapshot = await getDocs(q);
         const applicantCount = querySnapshot.size;
         
@@ -571,51 +958,163 @@
         const statusText = document.getElementById('console-reg-status-text');
         const quotaText = document.getElementById('console-reg-quota-text');
         const toggleBtn = document.getElementById('console-toggle-registration-btn');
+        const toggleBtnText = document.getElementById('toggle-btn-text');
+        const toggleBtnSpinner = document.getElementById('toggle-btn-spinner');
         const deadlineInput = document.getElementById('console-deadline-input');
 
         const isPastDeadline = deadline && new Date() > deadline.toDate();
         const effectiveStatus = isOpen && !isPastDeadline;
 
-        statusText.textContent = effectiveStatus ? 'Dibuka' : 'Ditutup';
-        statusText.className = `text-2xl font-bold ${effectiveStatus ? 'text-green-600' : 'text-red-600'}`;
-        quotaText.textContent = `${applicantCount} / ${maxApplicants}`;
+        // Update DOM elements
+        if (statusText) {
+            statusText.textContent = effectiveStatus ? 'DIBUKA' : 'DITUTUP';
+            statusText.className = `text-2xl font-bold ${effectiveStatus ? 'text-green-600' : 'text-red-600'}`;
+        }
+        
+        if (quotaText) {
+            quotaText.textContent = `${applicantCount} / ${maxApplicants}`;
+        }
 
-        toggleBtn.textContent = effectiveStatus ? 'Tutup Pendaftaran Sekarang' : 'Buka Pendaftaran Sekarang';
-        toggleBtn.className = `w-full text-white px-4 py-3 rounded-lg font-semibold transition duration-300 ${effectiveStatus ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`;
+        if (toggleBtnText) {
+            toggleBtnText.textContent = effectiveStatus ? 'Tutup Pendaftaran Sekarang' : 'Buka Pendaftaran Sekarang';
+        }
+        
+        if (toggleBtn) {
+            toggleBtn.className = `w-full text-white px-4 py-3 rounded-lg font-semibold transition duration-300 ${effectiveStatus ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`;
+        }
         
         if(deadline) {
             const d = deadline.toDate();
             const localISOString = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-            deadlineInput.value = localISOString;
+            if (deadlineInput) deadlineInput.value = localISOString;
         } else {
-            deadlineInput.value = '';
+            if (deadlineInput) deadlineInput.value = '';
         }
+
+        // Pastikan spinner disembunyikan dan tombol diaktifkan
+        toggleBtn.disabled = false;
+        toggleBtnSpinner.classList.add('hidden');
     }
     
+    // *** PERBAIKAN: Handler tombol toggle disederhanakan ***
     document.getElementById('console-toggle-registration-btn').addEventListener('click', async () => {
         const settingsDocRef = doc(db, 'config', 'settings');
-        await updateDoc(settingsDocRef, { isOpen: !registrationSettings.isOpen });
-        showNotification('Status pendaftaran berhasil diubah.', 'success');
+        const toggleBtn = document.getElementById('console-toggle-registration-btn');
+        const toggleBtnText = document.getElementById('toggle-btn-text');
+        const toggleBtnSpinner = document.getElementById('toggle-btn-spinner');
+        
+        toggleBtn.disabled = true;
+        toggleBtnSpinner.classList.remove('hidden');
+        toggleBtnText.textContent = 'Memproses...';
+        
+        const newStatus = !registrationSettings.isOpen;
+        
+        try {
+            // Cukup perbarui Firestore. onSnapshot akan menangani update UI.
+            await updateDoc(settingsDocRef, { isOpen: newStatus });
+            showNotification('Status pendaftaran berhasil diubah.', 'success');
+        } catch (error) {
+            console.error("Error updating registration status:", error);
+            showNotification('Gagal mengubah status pendaftaran.', 'error');
+            // Jika gagal, onSnapshot tidak akan berjalan, jadi kita perlu reset tombol secara manual
+            toggleBtn.disabled = false;
+            toggleBtnSpinner.classList.add('hidden');
+            // onSnapshot akan mengembalikan teks tombol ke status lama jika gagal
+        }
+        // 'finally' tidak diperlukan karena onSnapshot akan memanggil updateAdminConsole,
+        // yang akan menyetel ulang status tombol (disabled=false, spinner=hidden).
     });
 
+    // *** PERBAIKAN: Handler tombol deadline disederhanakan ***
     document.getElementById('console-save-deadline-btn').addEventListener('click', async () => {
         const deadlineValue = document.getElementById('console-deadline-input').value;
         const settingsDocRef = doc(db, 'config', 'settings');
-        if (deadlineValue) {
-            const deadlineDate = new Date(deadlineValue);
-            await updateDoc(settingsDocRef, { deadline: Timestamp.fromDate(deadlineDate) });
-            showNotification('Batas waktu berhasil disimpan.', 'success');
-        } else {
-            await updateDoc(settingsDocRef, { deadline: null });
-            showNotification('Batas waktu berhasil dihapus.', 'info');
+        try {
+            if (deadlineValue) {
+                const deadlineDate = new Date(deadlineValue);
+                // Cukup perbarui Firestore. onSnapshot akan menangani update UI.
+                await updateDoc(settingsDocRef, { deadline: Timestamp.fromDate(deadlineDate) });
+                showNotification('Batas waktu berhasil disimpan.', 'success');
+            } else {
+                // Cukup perbarui Firestore. onSnapshot akan menangani update UI.
+                await updateDoc(settingsDocRef, { deadline: null });
+                showNotification('Batas waktu berhasil dihapus.', 'info');
+            }
+        } catch (error) {
+            console.error("Error saving deadline:", error);
+            showNotification('Gagal menyimpan batas waktu.', 'error');
         }
     });
+
+    // BARU: Listener untuk tombol arsip
+    document.getElementById('archive-all-btn').addEventListener('click', handleArchiveAll);
+
+    // BARU: Fungsi untuk mengarsipkan semua siswa lulus
+    async function handleArchiveAll() {
+        const btn = document.getElementById('archive-all-btn');
+        const btnText = document.getElementById('archive-btn-text');
+        const btnSpinner = document.getElementById('archive-btn-spinner');
+
+        // Show loading
+        btn.disabled = true;
+        btnText.textContent = 'Mengarsipkan...';
+        btnSpinner.classList.remove('hidden');
+
+        try {
+            // 1. Temukan semua siswa di tahap akhir yang belum diarsipkan
+            const q = query(collection(db, "users"), 
+                where("role", "==", "siswa"),
+                where("currentStage", "==", "Pekan Orientasi"),
+                where("isArchived", "==", false)
+            );
+            
+            const querySnapshot = await getDocs(q);
+            
+            if (querySnapshot.empty) {
+                showNotification('Tidak ada siswa di tahap "Pekan Orientasi" untuk diarsipkan.', 'info');
+                // Tetap lanjutkan untuk membuka pendaftaran baru
+            }
+
+            // 2. Buat batch write untuk mengarsipkan mereka semua
+            const batch = writeBatch(db);
+            querySnapshot.forEach(docSnap => {
+                const docRef = doc(db, 'users', docSnap.id);
+                batch.update(docRef, { isArchived: true });
+            });
+
+            // 3. Commit batch
+            await batch.commit();
+
+            const studentCount = querySnapshot.size;
+            if (studentCount > 0) {
+                showNotification(`${studentCount} siswa berhasil diarsipkan.`, 'success');
+            }
+
+            // 4. Reset pendaftaran untuk memulai siklus baru
+            const settingsDocRef = doc(db, 'config', 'settings');
+            await updateDoc(settingsDocRef, {
+                isOpen: true,
+                deadline: null
+            });
+            showNotification('Siklus baru telah dibuka. Pendaftaran sekarang DIBUKA.', 'success');
+
+        } catch (error) {
+            console.error("Error during archiving process:", error);
+            showNotification('Gagal mengarsipkan siswa. Silakan coba lagi.', 'error');
+        } finally {
+            // Hide loading
+            btn.disabled = false;
+            btnText.textContent = 'Arsipkan Siswa Lulus & Mulai Siklus Baru';
+            btnSpinner.classList.add('hidden');
+        }
+    }
+
 
     function renderAdminDashboardCards(applicants = []) {
         const container = document.getElementById('admin-dashboard-cards');
         const currentFilter = document.querySelector('.dashboard-card.bg-blue-200')?.dataset.stage || STAGES[0];
         container.innerHTML = STAGES.map(stage => {
-            const count = applicants.filter(a => a.currentStage === stage && !a.isRejected).length;
+            const count = applicants.filter(a => a.currentStage === stage && !a.isRejected).length; // isArchived sudah difilter di query utama
             const isActive = stage === currentFilter;
             return `<div class="dashboard-card p-4 rounded-xl shadow-md cursor-pointer transition duration-300 ${isActive ? 'bg-blue-200' : 'bg-white'}" data-stage="${stage}"><div class="flex items-center gap-3"><div class="bg-blue-100 p-2 rounded-lg"><i class="fas ${STAGE_ICONS[STAGES.indexOf(stage)]} text-blue-600"></i></div><div><p class="text-gray-500 text-sm font-semibold">${stage}</p><p class="text-2xl font-bold">${count}</p></div></div></div>`;
         }).join('');
@@ -625,15 +1124,18 @@
         const container = document.getElementById('admin-table-container');
         document.querySelectorAll('.dashboard-card').forEach(c => c.classList.remove('bg-blue-200', 'bg-white'));
         document.querySelectorAll('.dashboard-card').forEach(c => c.classList.add(c.dataset.stage === stageFilter ? 'bg-blue-200' : 'bg-white'));
+        
+        // allApplicants sudah difilter (isArchived: false) dari query onSnapshot
         const applicants = allApplicants.filter(a => a.currentStage === stageFilter);
-        container.innerHTML = `<div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold">Daftar Siswa - Tahap: ${stageFilter}</h3>${(stageFilter === 'Daftar Ulang' || stageFilter === 'Dapat Nomor ID') ? `<button class="export-btn bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2" data-stage="${stageFilter}"><i class="fas fa-file-csv"></i>Ekspor CSV</button>` : ''}</div><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama & Status</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal Daftar</th><th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aksi</th></tr></thead><tbody id="applicant-table-body" class="bg-white divide-y divide-gray-200">${applicants.length > 0 ? applicants.sort((a,b) => (b.createdAt?.toDate()||0) - (a.createdAt?.toDate()||0)).map(applicant => `<tr><td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${applicant.name}</div><div class="text-sm text-gray-500">${applicant.email}</div>${applicant.isRejected ? '<span class="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Ditolak</span>' : ''}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${applicant.createdAt?.toDate().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) || 'N/A'}</td><td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium"><button class="text-indigo-600 hover:text-indigo-900 manage-btn" data-id="${applicant.id}"><i class="fas fa-edit mr-2"></i>Kelola</button></td></tr>`).join('') : `<tr><td colspan="3" class="text-center py-10 text-gray-500">Tidak ada siswa di tahap ini.</td></tr>`}</tbody></table></div>`;
+        
+        container.innerHTML = `<div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold">Daftar Siswa - Tahap: ${stageFilter}</h3>${(stageFilter === 'Daftar Ulang' || stageFilter === 'Dapat Nomor ID') ? `<button class="export-btn bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2" data-stage="${stageFilter}"><i class="fas fa-file-csv"></i>Ekspor CSV</button>` : ''}</div><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama & Status</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kontak</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal Daftar</th><th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aksi</th></tr></thead><tbody id="applicant-table-body" class="bg-white divide-y divide-gray-200">${applicants.length > 0 ? applicants.sort((a,b) => (b.createdAt?.toDate()||0) - (a.createdAt?.toDate()||0)).map(applicant => `<tr><td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${applicant.name}</div><div class="text-sm text-gray-500">${applicant.email}</div>${applicant.isRejected ? '<span class="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Ditolak</span>' : ''}${applicant.hasAdditionalForm ? '<span class="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Form Tambahan</span>' : ''}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><div>Telepon: ${applicant.phone || '-'}</div><div>Umur: ${applicant.age || '-'} tahun</div></td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${applicant.createdAt?.toDate().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) || 'N/A'}</td><td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium"><button class="text-indigo-600 hover:text-indigo-900 manage-btn" data-id="${applicant.id}"><i class="fas fa-edit mr-2"></i>Kelola</button></td></tr>`).join('') : `<tr><td colspan="4" class="text-center py-10 text-gray-500">Tidak ada siswa di tahap ini.</td></tr>`}</tbody></table></div>`;
     }
     
     document.getElementById('admin-view').addEventListener('click', async e => {
         const card = e.target.closest('.dashboard-card');
         if (card) {
             const stage = card.dataset.stage;
-            const q = query(collection(db, "users"), where("role", "==", "siswa"));
+            const q = query(collection(db, "users"), where("role", "==", "siswa"), where("isArchived", "==", false));
             const snapshot = await getDocs(q);
             const allApplicants = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderAdminTable(allApplicants, stage);
@@ -647,7 +1149,7 @@
         const exportBtn = e.target.closest('.export-btn');
         if(exportBtn) {
              const stage = exportBtn.dataset.stage;
-             const q = query(collection(db, "users"), where('role', '==', 'siswa'), where('currentStage', '==', stage), where('isRejected', '==', false));
+             const q = query(collection(db, "users"), where('role', '==', 'siswa'), where('currentStage', '==', stage), where('isRejected', '==', false), where("isArchived", "==", false));
              const querySnapshot = await getDocs(q);
              const data = querySnapshot.docs.map(doc => doc.data());
              exportToCSV(data, stage);
@@ -657,16 +1159,19 @@
     function renderAdminModal(data, id) {
         const modal = document.getElementById('admin-modal');
         const container = document.getElementById('modal-content-container');
-        let contentHTML = `<div class="p-6"><div class="flex justify-between items-start"><div><h3 class="text-xl font-bold">${data.name}</h3><p class="text-sm text-gray-500">${data.email}</p></div><button id="close-modal-btn" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-2xl"></i></button></div><div class="mt-4 border-t pt-4"><p class="font-semibold mb-1">Motivasi:</p><p class="text-gray-700 bg-gray-50 p-3 rounded-md border">${data.motivation || 'N/A'}</p></div><div class="mt-4 border-t pt-4"><label for="stage-selector" class="block font-semibold mb-2">Ubah Status Pendaftaran:</label><select id="stage-selector" class="w-full p-2 border rounded-lg bg-white">${STAGES.map(s => `<option value="${s}" ${data.currentStage === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>`;
+        let contentHTML = `<div class="p-6"><div class="flex justify-between items-start"><div><h3 class="text-xl font-bold">${data.name}</h3><p class="text-sm text-gray-500">${data.email}</p></div><button id="close-modal-btn" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-2xl"></i></button></div><div class="mt-4 border-t pt-4"><div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4"><div><p class="font-semibold mb-1">Nomor Telepon:</p><p class="text-gray-700">${data.phone || '-'}</p></div><div><p class="font-semibold mb-1">Umur:</p><p class="text-gray-700">${data.age || '-'} tahun</p></div></div><p class="font-semibold mb-1">Motivasi:</p><p class="text-gray-700 bg-gray-50 p-3 rounded-md border">${data.motivation || 'N/A'}</p></div><div class="mt-4 border-t pt-4"><label for="stage-selector" class="block font-semibold mb-2">Ubah Status Pendaftaran:</label><select id="stage-selector" class="w-full p-2 border rounded-lg bg-white">${STAGES.map(s => `<option value="${s}" ${data.currentStage === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>`;
         
         if (data.currentStage === 'Seleksi') {
             contentHTML += `<div class="mt-4 border-t pt-4"><label class="block font-semibold mb-2">Jawaban Tugas Seleksi:</label>${data.selectionTasks?.length > 0 ? data.selectionTasks.map(t => `<div class="p-3 bg-gray-100 rounded mb-2 border"><strong>Q: ${t.question}</strong><br><em class="text-gray-700">A: ${t.answer || 'Belum dijawab'}</em></div>`).join('') : '<p class="text-gray-500">Belum ada tugas.</p>'}<div class="mt-3 flex gap-2"><input id="new-task-input" type="text" placeholder="Ketik pertanyaan baru..." class="w-full p-2 border rounded-lg"><button id="add-task-btn" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">Tambah</button></div></div><div class="mt-4 border-t pt-4 bg-red-50 p-4 rounded-lg"><label for="rejection-reason" class="block font-semibold mb-2 text-red-800">Tolak Pendaftaran:</label><textarea id="rejection-reason" class="w-full p-2 border rounded-lg" placeholder="Tulis alasan penolakan..."></textarea><button id="reject-btn" class="mt-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center gap-2"><i class="fas fa-times-circle"></i>Tolak Pendaftar</button></div>`;
         } else if (data.currentStage === 'Pekan Orientasi') {
              contentHTML += `<div class="mt-4 border-t pt-4"><label class="block font-semibold mb-2">Tugas & Jawaban Orientasi:</label><div class="space-y-4 mb-3">${(data.orientationTasks || []).map((task, index) => { const answer = data.orientationAnswers?.[index] || 'Belum dijawab'; return `<div class="p-3 bg-gray-100 rounded border"><strong>Tugas: ${task.title}</strong><p class="text-sm text-gray-600">${task.description}</p><div class="mt-2 p-2 bg-white border-l-4 border-blue-500"><p class="font-semibold text-sm">Jawaban:</p><em class="text-gray-700">"${answer}"</em></div></div>`; }).join('') || '<p class="text-gray-500">Belum ada tugas.</p>'}</div><input id="orientation-title" type="text" placeholder="Judul Tugas" class="w-full p-2 border rounded-lg mb-2"><textarea id="orientation-desc" placeholder="Deskripsi tugas" class="w-full p-2 border rounded-lg"></textarea><button id="add-orientation-task-btn" class="mt-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">Tambah Tugas</button></div>`;
-        } else if (data.currentStage === 'Kartu Rencana Studi') {
-            contentHTML += `<div class="mt-4 border-t pt-4"><label for="krs-link-input" class="block font-semibold mb-2">Link KRS:</label><input id="krs-link-input" type="url" class="w-full p-2 border rounded-lg" value="${data.krsLink || ''}" placeholder="https://..."></div>`;
         } else if (data.currentStage === 'Seleksi Kelas') {
             contentHTML += `<div class="mt-4 border-t pt-4"><label for="class-link-input" class="block font-semibold mb-2">Link Grup Kelas:</label><input id="class-link-input" type="url" class="w-full p-2 border rounded-lg" value="${data.classLink || ''}" placeholder="https://wa.me/..."></div>`;
+        }
+
+        // Show additional form info if exists
+        if (data.hasAdditionalForm) {
+            contentHTML += `<div class="mt-4 border-t pt-4 bg-purple-50 p-4 rounded-lg"><p class="font-semibold mb-2 text-purple-800">Formulir Tambahan:</p><p class="text-sm text-purple-700">Siswa ini telah mengirimkan formulir tambahan. <a href="#" id="view-additional-form-btn" class="text-indigo-600 hover:text-indigo-900">Lihat formulir</a></p></div>`;
         }
 
         contentHTML += `<div class="mt-6 text-right border-t pt-4"><button id="save-changes-btn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"><i class="fas fa-save"></i>Simpan</button></div></div>`;
@@ -678,14 +1183,24 @@
         document.getElementById('reject-btn')?.addEventListener('click', () => rejectApplicant(id));
         document.getElementById('add-task-btn')?.addEventListener('click', () => addSelectionTask(id, data));
         document.getElementById('add-orientation-task-btn')?.addEventListener('click', () => addOrientationTask(id, data));
+        
+        // View additional form button
+        document.getElementById('view-additional-form-btn')?.addEventListener('click', async () => {
+            const q = query(collection(db, "additionalForms"), where("userId", "==", id));
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                const formDoc = querySnapshot.docs[0];
+                renderFormModal(formDoc.data(), formDoc.id);
+            } else {
+                showNotification('Formulir tambahan tidak ditemukan.', 'error');
+            }
+        });
     }
     
     async function saveAdminChanges(id) {
         const newStage = document.getElementById('stage-selector').value;
-        const krsLink = document.getElementById('krs-link-input')?.value;
         const classLink = document.getElementById('class-link-input')?.value;
         let updates = { currentStage: newStage, isRejected: false, rejectionReason: null };
-        if (krsLink !== undefined) updates.krsLink = krsLink || null;
         if (classLink !== undefined) updates.classLink = classLink || null;
         await updateDoc(doc(db, 'users', id), updates);
         showNotification('Perubahan berhasil disimpan!', 'success');
@@ -729,7 +1244,10 @@
     async function renderArchiveView() {
         const container = document.getElementById('archive-table-container');
         container.innerHTML = `<div class="text-center py-10"><i class="fas fa-spinner fa-spin text-3xl"></i></div>`;
-        const q = query(collection(db, "users"), where('currentStage', '==', 'Pekan Orientasi'));
+        
+        // BARU: Query diubah untuk mencari siswa yang diarsipkan
+        const q = query(collection(db, "users"), where('isArchived', '==', true));
+        
         const querySnapshot = await getDocs(q);
         const graduates = querySnapshot.docs.map(doc => doc.data());
         let tableHTML = `<div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold">Total Lulus: ${graduates.length}</h3><button id="download-pdf-btn" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center gap-2"><i class="fas fa-file-pdf"></i> Unduh PDF</button></div><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nomor ID</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Angkatan</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">${graduates.length > 0 ? graduates.map(student => { const joinDate = student.createdAt.toDate(); const angkatan = `${joinDate.toLocaleString('id-ID', { month: 'long' })} ${joinDate.getFullYear()}`; return `<tr><td class="px-6 py-4">${student.name}</td><td class="px-6 py-4 font-mono">${student.studentIdNumber || 'N/A'}</td><td class="px-6 py-4">${angkatan}</td></tr>`; }).join('') : `<tr><td colspan="3" class="text-center py-10">Belum ada siswa yang lulus.</td></tr>`}</tbody></table></div>`;
@@ -761,11 +1279,11 @@
     function exportToCSV(data, stage) {
         if (data.length === 0) { showNotification('Tidak ada data untuk diekspor.', 'info'); return; }
         let csvContent = "data:text/csv;charset=utf-8,";
-        let headers = ["Nama Lengkap", "Email"];
+        let headers = ["Nama Lengkap", "Email", "Telepon", "Umur"];
         if(stage === 'Dapat Nomor ID') headers.push("Nomor ID Siswa");
         csvContent += headers.join(",") + "\r\n";
         data.forEach(item => {
-            let row = [`"${item.name}"`, `"${item.email}"`];
+            let row = [`"${item.name}"`, `"${item.email}"`, `"${item.phone || ''}"`, `"${item.age || ''}"`];
             if(stage === 'Dapat Nomor ID') row.push(`"${item.studentIdNumber || 'N/A'}"`);
             csvContent += row.join(",") + "\r\n";
         });
@@ -782,4 +1300,7 @@
 </script>
 </body>
 </html>
+
+
+
 
