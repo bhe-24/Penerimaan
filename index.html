@@ -26,6 +26,7 @@
         .toast-success { background-color: #dcfce7; color: #166534; }
         .toast-error { background-color: #fee2e2; color: #991b1b; }
         .toast-info { background-color: #e0f2fe; color: #075985; }
+        .toast-warning { background-color: #fef3c7; color: #92400e; }
         .toast i { margin-right: 0.75rem; font-size: 1.25rem; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
@@ -52,12 +53,51 @@
             animation: pulse 0.6s ease-in-out;
         }
         
+        /* Alert modal style - PERBAIKAN */
+        .alert-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999; /* Ditingkatkan z-index */
+            transition: opacity 0.3s ease;
+        }
+        
+        .alert-modal.hidden {
+            display: none !important; /* Memastikan modal benar-benar tersembunyi */
+        }
+        
     </style>
 </head>
 <body class="antialiased text-gray-800">
 
     <!-- Container untuk Notifikasi -->
     <div id="notification-container"></div>
+
+    <!-- Alert Modal untuk Pendaftaran Ditutup -->
+    <div id="alert-modal" class="alert-modal hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+            <div class="flex items-center mb-4">
+                <div class="flex-shrink-0 bg-yellow-100 rounded-full p-2">
+                    <i class="fas fa-exclamation-triangle text-yellow-600 text-xl"></i>
+                </div>
+                <h3 class="ml-3 text-lg font-medium text-gray-900">Pendaftaran Ditutup</h3>
+            </div>
+            <div class="mb-4">
+                <p class="text-sm text-gray-500">Pendaftaran saat ini sedang ditutup. Silakan logout dan kembali lagi saat pendaftaran dibuka.</p>
+            </div>
+            <div class="flex justify-end">
+                <button id="alert-logout-btn" class="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+                    Logout
+                </button>
+            </div>
+        </div>
+    </div>
 
     <div id="app-container" class="min-h-screen flex flex-col">
         <header class="bg-white shadow-md sticky top-0 z-40">
@@ -82,6 +122,7 @@
                         <i class="fas fa-door-closed text-4xl text-yellow-500 mb-3"></i>
                         <h2 class="text-xl font-bold text-yellow-800">Pendaftaran Telah Ditutup</h2>
                         <p class="mt-1 text-sm text-yellow-700">Saat ini pendaftaran belum dibuka atau kuota sudah terpenuhi. Silakan kembali lagi nanti.</p>
+                        <p class="mt-2 text-sm text-yellow-600">Hanya admin yang dapat mengakses portal saat ini.</p>
                     </div>
                     <div id="login-container">
                         <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Masuk ke Portal</h2>
@@ -305,7 +346,7 @@
     
     const showNotification = (message, type = 'success') => {
         const container = document.getElementById('notification-container');
-        const icons = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle' };
+        const icons = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle', warning: 'fa-exclamation-triangle' };
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
         toast.innerHTML = `<i class="fas ${icons[type]}"></i><p>${message}</p>`;
@@ -338,6 +379,48 @@
     document.getElementById('universal-logout-btn').addEventListener('click', () => {
         signOut(auth);
         showNotification("Anda telah berhasil logout.", "info");
+    });
+    
+    // PERBAIKAN: Event listener untuk tombol logout di modal alert dengan pendekatan yang lebih langsung
+    document.getElementById('alert-logout-btn').addEventListener('click', async () => {
+        try {
+            // Tampilkan loading state pada tombol
+            const btn = document.getElementById('alert-logout-btn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Logout...';
+            
+            // Lakukan logout
+            await signOut(auth);
+            
+            // Tutup modal dengan cara yang lebih pasti
+            const modal = document.getElementById('alert-modal');
+            modal.style.display = 'none';
+            modal.classList.add('hidden');
+            
+            // Reset tombol
+            btn.disabled = false;
+            btn.textContent = originalText;
+            
+            // Tampilkan notifikasi
+            showNotification("Anda telah berhasil logout.", "info");
+            
+            // Update view ke halaman login
+            updateView('auth-view');
+            checkRegistrationAvailability();
+            
+            // Sembunyikan tombol logout universal
+            document.getElementById('universal-logout-btn').classList.add('hidden');
+            
+        } catch (error) {
+            console.error("Error during logout:", error);
+            showNotification("Terjadi kesalahan saat logout.", "error");
+            
+            // Reset tombol jika terjadi error
+            const btn = document.getElementById('alert-logout-btn');
+            btn.disabled = false;
+            btn.textContent = 'Logout';
+        }
     });
     
     // [FIX] Memanggil updateAdminConsole saat tombol diklik
@@ -548,7 +631,7 @@
     }
     
     // Remove problematic onSnapshot and use direct reads
-    onAuthStateChanged(auth, user => {
+    onAuthStateChanged(auth, async user => {
         if (unsubscribeUser) unsubscribeUser();
         if (unsubscribeApplicants) unsubscribeApplicants();
         if (unsubscribeForms) unsubscribeForms();
@@ -559,49 +642,69 @@
         
         if (user) {
             logoutBtn.classList.remove('hidden');
-            setupUserSession(user).then(initialUserData => {
-                showNotification(`Selamat datang kembali, ${initialUserData.name}!`, 'success');
+            const initialUserData = await setupUserSession(user);
+            
+            // Check if registration is closed and user is not admin
+            await refreshRegistrationSettings();
+            const deadline = registrationSettings.deadline?.toDate();
+            const isPastDeadline = deadline && new Date() > deadline;
+            const isManuallyOpen = registrationSettings.isOpen;
+            const q = query(collection(db, "users"), where("role", "==", "siswa"), where("isRejected", "==", false));
+            const querySnapshot = await getDocs(q);
+            const applicantCount = querySnapshot.size;
+            const isQuotaFull = applicantCount >= registrationSettings.maxApplicants;
+            const isRegistrationEffectivelyOpen = isManuallyOpen && !isQuotaFull && !isPastDeadline;
+            
+            // If registration is closed and user is not admin, show alert and logout
+            if (!isRegistrationEffectivelyOpen && !initialUserData.email.toLowerCase().endsWith('@ac.id')) {
+                showNotification("Pendaftaran sedang ditutup. Hanya admin yang dapat mengakses portal.", "warning");
                 
-                if (initialUserData.role === 'admin') {
-                    currentUserData = initialUserData;
-                    renderAdminView();
+                // Tampilkan modal dengan cara yang lebih pasti
+                const modal = document.getElementById('alert-modal');
+                modal.style.display = 'flex';
+                modal.classList.remove('hidden');
+                
+                return; // Stop further execution
+            }
+            
+            showNotification(`Selamat datang kembali, ${initialUserData.name}!`, 'success');
+            
+            if (initialUserData.role === 'admin') {
+                currentUserData = initialUserData;
+                renderAdminView();
 
-                    // *** PERBAIKAN: Listener real-time untuk settings ***
-                    const settingsDocRef = doc(db, 'config', 'settings');
-                    unsubscribeSettings = onSnapshot(settingsDocRef, (docSnap) => {
-                        if (docSnap.exists()) {
-                            registrationSettings = docSnap.data();
-                        } else {
-                            // Doc tidak ada, buat default
-                            registrationSettings = { isOpen: false, maxApplicants: 50, deadline: null };
-                            setDoc(settingsDocRef, registrationSettings);
-                        }
-                        // Jika admin sedang melihat konsol, perbarui UI-nya
-                        if (document.getElementById('admin-console-view').classList.contains('active-view')) {
-                            updateAdminConsole();
-                        }
-                    }, error => {
-                        console.error("Error listening to settings:", error);
-                        showNotification("Gagal memuat setelan pendaftaran.", "error");
-                    });
-                    // *** AKHIR DARI PERBAIKAN ***
+                // *** PERBAIKAN: Listener real-time untuk settings ***
+                const settingsDocRef = doc(db, 'config', 'settings');
+                unsubscribeSettings = onSnapshot(settingsDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        registrationSettings = docSnap.data();
+                    } else {
+                        // Doc tidak ada, buat default
+                        registrationSettings = { isOpen: false, maxApplicants: 50, deadline: null };
+                        setDoc(settingsDocRef, registrationSettings);
+                    }
+                    // Jika admin sedang melihat konsol, perbarui UI-nya
+                    if (document.getElementById('admin-console-view').classList.contains('active-view')) {
+                        updateAdminConsole();
+                    }
+                }, error => {
+                    console.error("Error listening to settings:", error);
+                    showNotification("Gagal memuat setelan pendaftaran.", "error");
+                });
+                // *** AKHIR DARI PERBAIKAN ***
 
-                } else {
-                    const userDocRef = doc(db, 'users', user.uid);
-                    unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
-                        if (docSnap.exists()) {
-                            currentUserData = { uid: user.uid, ...docSnap.data() };
-                            renderStudentView();
-                        }
-                    }, error => {
-                        console.error("Gagal mendengarkan perubahan data siswa:", error);
-                        updateView('data-error-view');
-                    });
-                }
-            }).catch(error => {
-                console.error("Gagal mengatur sesi pengguna:", error);
-                updateView('data-error-view');
-            });
+            } else {
+                const userDocRef = doc(db, 'users', user.uid);
+                unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        currentUserData = { uid: user.uid, ...docSnap.data() };
+                        renderStudentView();
+                    }
+                }, error => {
+                    console.error("Gagal mendengarkan perubahan data siswa:", error);
+                    updateView('data-error-view');
+                });
+            }
         } else {
             logoutBtn.classList.add('hidden');
             checkRegistrationAvailability();
@@ -1300,7 +1403,3 @@
 </script>
 </body>
 </html>
-
-
-
-
