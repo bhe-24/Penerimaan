@@ -189,6 +189,73 @@
                 </div>
             </div>
 
+            <!-- Account Completion View - BARU -->
+            <div id="account-completion-view" class="view">
+                <div class="w-full max-w-md p-8 bg-white rounded-xl shadow-lg mx-auto mt-10">
+                    <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Lengkapi Data Akun</h2>
+                    <p class="text-center text-gray-600 mb-6">Anda perlu melengkapi data profil untuk melanjutkan. Email tidak dapat diubah.</p>
+                    <form id="account-completion-form">
+                        <div class="mb-4">
+                            <label for="completion-name" class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
+                            <input type="text" id="completion-name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            <p class="text-xs text-gray-500 mt-1">Nama akan diformat dengan kapital di setiap kata</p>
+                        </div>
+                        <div class="mb-4">
+                            <label for="completion-email" class="block text-sm font-medium text-gray-700 mb-1">Email (Tidak dapat diubah)</label>
+                            <input type="email" id="completion-email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100" readonly>
+                        </div>
+                        <div class="mb-4">
+                            <label for="completion-phone" class="block text-sm font-medium text-gray-700 mb-1">Nomor Telepon</label>
+                            <input type="tel" id="completion-phone" required class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="08123456789">
+                        </div>
+                        <div class="mb-4">
+                            <label for="completion-age" class="block text-sm font-medium text-gray-700 mb-1">Umur</label>
+                            <input type="number" id="completion-age" required min="15" max="100" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Contoh: 20">
+                        </div>
+                        <div class="mb-4">
+                            <label for="completion-address" class="block text-sm font-medium text-gray-700 mb-1">Alamat</label>
+                            <textarea id="completion-address" rows="2" required class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Jl. Contoh No. 123, Kota, Provinsi"></textarea>
+                        </div>
+                        <div class="mb-4">
+                            <label for="completion-motivation" class="block text-sm font-medium text-gray-700 mb-1">Motivasi Bergabung</label>
+                            <textarea id="completion-motivation" rows="3" required class="w-full px-4 py-2 border border-gray-300 rounded-lg"></textarea>
+                        </div>
+                        <div class="mb-4">
+                            <div class="flex items-center">
+                                <input type="checkbox" id="completion-submit-additional-form" class="mr-2">
+                                <label for="completion-submit-additional-form" class="text-sm font-medium text-gray-700">Saya ingin mengirimkan formulir tambahan</label>
+                            </div>
+                        </div>
+                        <div id="completion-additional-form-container" class="hidden mb-4 p-4 bg-gray-50 rounded-lg">
+                            <h3 class="text-lg font-semibold mb-3">Formulir Tambahan</h3>
+                            <div class="mb-3">
+                                <label for="completion-additional-form-education" class="block text-sm font-medium text-gray-700 mb-1">Pendidikan Terakhir</label>
+                                <select id="completion-additional-form-education" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                    <option value="">Pilih Pendidikan</option>
+                                    <option value="SMA/SMK">SMA/SMK</option>
+                                    <option value="D3">D3</option>
+                                    <option value="S1">S1</option>
+                                    <option value="S2">S2</option>
+                                    <option value="Lainnya">Lainnya</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="completion-additional-form-experience" class="block text-sm font-medium text-gray-700 mb-1">Pengalaman (jika ada)</label>
+                                <textarea id="completion-additional-form-experience" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="completion-additional-form-interest" class="block text-sm font-medium text-gray-700 mb-1">Minat/Kompetensi</label>
+                                <input type="text" id="completion-additional-form-interest" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-[#005a9c] text-white py-2 rounded-lg font-semibold hover:bg-[#004b80] transition duration-300 flex items-center justify-center disabled:opacity-75">
+                            <i class="fas fa-spinner fa-spin mr-2 hidden"></i>
+                            <span class="button-text">Simpan Data</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
             <!-- Student Lifecycle View -->
             <div id="student-view" class="view">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -363,6 +430,25 @@
         }
     };
     
+    // Fungsi untuk memformat nama dengan kapital di setiap kata
+    const formatName = (name) => {
+        return name.toLowerCase().split(' ').map(word => {
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }).join(' ');
+    };
+    
+    // Fungsi untuk memeriksa apakah data siswa lengkap
+    const isStudentDataComplete = (userData) => {
+        if (!userData || userData.role !== 'siswa') return true; // Non-siswa tidak perlu diperiksa
+        
+        return !!(userData.name && 
+                 userData.email && 
+                 userData.phone && 
+                 userData.age && 
+                 userData.address && 
+                 userData.motivation);
+    };
+    
     document.getElementById('show-register').addEventListener('click', async (e) => {
         e.preventDefault();
         // Force refresh settings before checking
@@ -455,6 +541,16 @@
         }
     });
 
+    // Toggle additional form visibility for completion form
+    document.getElementById('completion-submit-additional-form').addEventListener('change', (e) => {
+        const additionalFormContainer = document.getElementById('completion-additional-form-container');
+        if (e.target.checked) {
+            additionalFormContainer.classList.remove('hidden');
+        } else {
+            additionalFormContainer.classList.add('hidden');
+        }
+    });
+
     document.getElementById('login-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const form = e.target;
@@ -478,7 +574,7 @@
         e.preventDefault();
         const form = e.target;
         showLoadingButton(form, true);
-        const name = document.getElementById('register-name').value;
+        const name = formatName(document.getElementById('register-name').value); // Format nama
         const email = document.getElementById('register-email').value;
         const password = document.getElementById('register-password').value;
         const phone = document.getElementById('register-phone').value;
@@ -507,6 +603,7 @@
                     email, 
                     phone,
                     age: parseInt(age),
+                    address: '', // Field baru
                     motivation, 
                     role: userRole, 
                     currentStage: initialStage, 
@@ -550,6 +647,74 @@
                     message = 'Email ini sudah terdaftar. Silakan login.';
                  }
                 showNotification(message, 'error');
+            })
+            .finally(() => showLoadingButton(form, false));
+    });
+
+    // Account completion form handler - BARU
+    document.getElementById('account-completion-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const form = e.target;
+        showLoadingButton(form, true);
+        
+        const name = formatName(document.getElementById('completion-name').value); // Format nama
+        const email = document.getElementById('completion-email').value; // Email read-only
+        const phone = document.getElementById('completion-phone').value;
+        const age = document.getElementById('completion-age').value;
+        const address = document.getElementById('completion-address').value;
+        const motivation = document.getElementById('completion-motivation').value;
+        
+        // Check if additional form is submitted
+        const submitAdditionalForm = document.getElementById('completion-submit-additional-form').checked;
+        let additionalFormData = null;
+        
+        if (submitAdditionalForm) {
+            additionalFormData = {
+                education: document.getElementById('completion-additional-form-education').value,
+                experience: document.getElementById('completion-additional-form-experience').value,
+                interest: document.getElementById('completion-additional-form-interest').value
+            };
+        }
+
+        // Update user data
+        const userDocRef = doc(db, 'users', currentUserData.uid);
+        const updates = {
+            name,
+            phone,
+            age: parseInt(age),
+            address,
+            motivation,
+            hasAdditionalForm: submitAdditionalForm
+        };
+        
+        updateDoc(userDocRef, updates)
+            .then(() => {
+                // If additional form is submitted, save it to a separate collection
+                if (submitAdditionalForm && additionalFormData) {
+                    return addDoc(collection(db, 'additionalForms'), {
+                        userId: currentUserData.uid,
+                        userName: name,
+                        userEmail: email,
+                        userPhone: phone,
+                        userAge: parseInt(age),
+                        ...additionalFormData,
+                        submittedAt: serverTimestamp()
+                    });
+                }
+            })
+            .then(() => {
+                showNotification('Data akun berhasil diperbarui!', 'success');
+                // Update local data
+                currentUserData = { ...currentUserData, ...updates };
+                // Navigate to appropriate view
+                if (currentUserData.role === 'admin') {
+                    renderAdminView();
+                } else {
+                    renderStudentView();
+                }
+            })
+            .catch(err => {
+                showNotification('Gagal memperbarui data: ' + err.message, 'error');
             })
             .finally(() => showLoadingButton(form, false));
     });
@@ -694,16 +859,35 @@
                 // *** AKHIR DARI PERBAIKAN ***
 
             } else {
-                const userDocRef = doc(db, 'users', user.uid);
-                unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        currentUserData = { uid: user.uid, ...docSnap.data() };
-                        renderStudentView();
-                    }
-                }, error => {
-                    console.error("Gagal mendengarkan perubahan data siswa:", error);
-                    updateView('data-error-view');
-                });
+                // PERUBAHAN: Periksa kelengkapan data siswa
+                if (!isStudentDataComplete(initialUserData)) {
+                    // Jika data tidak lengkap, arahkan ke form pendaftaran akun
+                    currentUserData = initialUserData;
+                    updateView('account-completion-view');
+                    
+                    // Isi form dengan data yang sudah ada
+                    document.getElementById('completion-name').value = initialUserData.name || '';
+                    document.getElementById('completion-email').value = initialUserData.email || '';
+                    document.getElementById('completion-phone').value = initialUserData.phone || '';
+                    document.getElementById('completion-age').value = initialUserData.age || '';
+                    document.getElementById('completion-address').value = initialUserData.address || '';
+                    document.getElementById('completion-motivation').value = initialUserData.motivation || '';
+                    
+                    // Tampilkan notifikasi
+                    showNotification("Silakan lengkapi data profil Anda untuk melanjutkan.", "info");
+                } else {
+                    // Jika data lengkap, lanjutkan ke view siswa
+                    const userDocRef = doc(db, 'users', user.uid);
+                    unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            currentUserData = { uid: user.uid, ...docSnap.data() };
+                            renderStudentView();
+                        }
+                    }, error => {
+                        console.error("Gagal mendengarkan perubahan data siswa:", error);
+                        updateView('data-error-view');
+                    });
+                }
             }
         } else {
             logoutBtn.classList.add('hidden');
@@ -930,7 +1114,7 @@
         const querySnapshot = await getDocs(q);
         const forms = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         
-        let tableHTML = `<div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold">Total Formulir: ${forms.length}</h3><button id="download-forms-pdf-btn" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center gap-2"><i class="fas fa-file-pdf"></i> Unduh PDF</button></div><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Telepon</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Umur</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pendidikan</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pengalaman</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Minat</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th><th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aksi</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">${forms.length > 0 ? forms.sort((a,b) => (b.submittedAt?.toDate()||0) - (a.submittedAt?.toDate()||0)).map(form => `<tr><td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${form.userName}</div></td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.userEmail}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.userPhone || '-'}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.userAge || '-'}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.education || '-'}</td><td class="px-6 py-4 text-sm text-gray-500">${form.experience || '-'}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.interest || '-'}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.submittedAt?.toDate().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) || 'N/A'}</td><td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium"><button class="text-indigo-600 hover:text-indigo-900 view-form-btn" data-id="${form.id}"><i class="fas fa-eye mr-2"></i>Lihat</button></td></tr>`).join('') : `<tr><td colspan="9" class="text-center py-10 text-gray-500">Tidak ada formulir tambahan.</td></tr>`}</tbody></table></div>`;
+        let tableHTML = `<div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold">Total Formulir: ${forms.length}</h3><button id="download-forms-pdf-btn" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center gap-2"><i class="fas fa-file-pdf"></i> Unduh PDF</button></div><div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Telepon</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Umur</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pendidikan</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pengalaman</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Minat</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th><th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aksi</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">${forms.length > 0 ? forms.sort((a,b) => (b.submittedAt?.toDate()||0) - (a.submittedAt?.toDate()||0)).map(form => `<tr><td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${form.userName}</div></td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.userEmail}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.userPhone || '-'}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.userAge || '-'}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.education || '-'}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.experience || '-'}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.interest || '-'}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${form.submittedAt?.toDate().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) || 'N/A'}</td><td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium"><button class="text-indigo-600 hover:text-indigo-900 view-form-btn" data-id="${form.id}"><i class="fas fa-eye mr-2"></i>Lihat</button></td></tr>`).join('') : `<tr><td colspan="9" class="text-center py-10 text-gray-500">Tidak ada formulir tambahan.</td></tr>`}</tbody></table></div>`;
         
         container.innerHTML = tableHTML;
         
